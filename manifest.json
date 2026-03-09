@@ -1,0 +1,17 @@
+{
+  "app": "Sharp Jobs",
+  "version": "1.0.0",
+  "files": {
+    "index.html":    { "version": "1.0.0", "description": "App shell & navigation" },
+    "sw.js":         { "version": "1.0.0", "description": "Service worker (offline support)" },
+    "js/db.js":      { "version": "1.0.0", "description": "Data storage & models" },
+    "js/ui.js":      { "version": "1.0.0", "description": "Shared UI components" },
+    "js/jobs.js":    { "version": "1.0.0", "description": "Work orders module" },
+    "js/delivery.js":{ "version": "1.0.0", "description": "Delivery queue module" },
+    "js/customers.js":{ "version": "1.0.0", "description": "Customers module" },
+    "js/invoices.js":{ "version": "1.0.0", "description": "Invoices module" },
+    "js/dashboard.js":{ "version": "1.0.0", "description": "Dashboard module" },
+    "js/settings.js":{ "version": "1.0.0", "description": "Settings module" },
+    "js/updater.js": { "version": "1.0.0", "description": "GitHub update & backup system" }
+  }
+}

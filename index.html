@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sharp Jobs">
+<title>Sharp Jobs</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   SHARP JOBS — Styles
+   Version: 1.0.0
+   To modify visual design: edit the CSS in this file.
+   ============================================================ */
+
+:root {
+  --bg: #0f0e0c;
+  --surface: #1a1916;
+  --surface2: #242220;
+  --surface3: #2e2c29;
+  --border: #333129;
+  --gold: #c9a84c;
+  --gold-dim: #8a6f30;
+  --gold-light: #e8c97a;
+  --text: #f0ece3;
+  --text-dim: #8a8679;
+  --text-mid: #b8b3a8;
+  --green: #4a9e6b;
+  --green-bg: #1a2e23;
+  --amber: #c97d2a;
+  --amber-bg: #2e2010;
+  --blue: #4a7fc1;
+  --blue-bg: #111e30;
+  --red: #c14a4a;
+  --red-bg: #2e1111;
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { height:100%; background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; overflow:hidden; }
+
+/* ── Layout ── */
+#app { display:flex; flex-direction:column; height:100dvh; }
+#screen { flex:1; overflow-y:auto; padding-bottom:84px; }
+#screen::-webkit-scrollbar { display:none; }
+
+/* ── Nav ── */
+#nav { position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--border); display:flex; z-index:100; padding-bottom:env(safe-area-inset-bottom); }
+.nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:10px 0; cursor:pointer; color:var(--text-dim); transition:color .2s; }
+.nav-btn.active { color:var(--gold); }
+.nav-btn svg { width:21px; height:21px; }
+.nav-btn span { font-size:9px; font-weight:600; letter-spacing:.5px; text-transform:uppercase; }
+
+/* ── Header ── */
+.page-header { padding:18px 16px 10px; position:sticky; top:0; background:var(--bg); z-index:50; border-bottom:1px solid var(--border); }
+.page-header h1 { font-family:'DM Serif Display',serif; font-size:26px; color:var(--gold-light); letter-spacing:-.3px; }
+.page-header p { font-size:12px; color:var(--text-dim); margin-top:2px; }
+
+/* ── FAB ── */
+#fab { position:fixed; bottom:calc(72px + env(safe-area-inset-bottom)); right:18px; width:54px; height:54px; border-radius:50%; background:var(--gold); color:var(--bg); display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 20px rgba(201,168,76,.4); z-index:99; transition:transform .1s; }
+#fab:active { transform:scale(.93); }
+#fab svg { width:26px; height:26px; }
+
+/* ── Cards ── */
+.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px; margin:10px 14px 0; cursor:pointer; transition:border-color .2s, transform .1s; animation:fadeUp .25s ease both; }
+.card:active { transform:scale(.985); border-color:var(--gold-dim); }
+.card-overdue { border-color:var(--red) !important; }
+.card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+.card-wo { font-size:11px; font-weight:700; color:var(--gold-dim); letter-spacing:.8px; margin-bottom:2px; }
+.card-name { font-weight:600; font-size:15px; color:var(--text); }
+.card-items { font-size:13px; color:var(--text-mid); margin-top:2px; }
+.card-phone { font-size:13px; color:var(--gold); text-decoration:none; display:block; margin-top:4px; }
+.card-right { text-align:right; flex-shrink:0; }
+.card-price { font-family:'DM Serif Display',serif; font-size:17px; color:var(--gold); }
+.card-meta { display:flex; gap:8px; margin-top:10px; align-items:center; flex-wrap:wrap; }
+.card-date { font-size:11px; color:var(--text-dim); }
+.card-due { font-size:11px; color:var(--text-dim); margin-top:6px; }
+.due-date { font-size:11px; color:var(--text-dim); }
+.due-overdue { color:var(--red) !important; }
+.delivery-method { font-size:11px; color:var(--text-dim); }
+.overdue-tag { font-size:10px; font-weight:700; color:var(--red); letter-spacing:.5px; margin-top:4px; }
+
+/* ── Badges ── */
+.badge { font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; letter-spacing:.3px; }
+.badge-grey  { background:var(--surface3); color:var(--text-mid); }
+.badge-amber { background:var(--amber-bg); color:var(--amber); }
+.badge-blue  { background:var(--blue-bg); color:var(--blue); }
+.badge-green { background:var(--green-bg); color:var(--green); }
+.badge-red   { background:var(--red-bg); color:var(--red); }
+
+/* ── Search ── */
+.search-wrap { padding:10px 14px 6px; }
+.search-input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px 14px; color:var(--text); font-size:15px; font-family:'DM Sans',sans-serif; outline:none; }
+.search-input::placeholder { color:var(--text-dim); }
+.search-input:focus { border-color:var(--gold-dim); }
+
+/* ── Filter Pills ── */
+.filter-row { display:flex; gap:8px; padding:0 14px 10px; overflow-x:auto; }
+.filter-row::-webkit-scrollbar { display:none; }
+.pill { flex-shrink:0; font-size:12px; font-weight:500; padding:5px 13px; border-radius:20px; border:1px solid var(--border); color:var(--text-dim); cursor:pointer; transition:all .2s; background:var(--surface2); }
+.pill.active { background:var(--gold); color:var(--bg); border-color:var(--gold); font-weight:600; }
+
+/* ── Empty ── */
+.empty { text-align:center; padding:70px 30px; color:var(--text-dim); }
+.empty-icon { font-size:36px; margin-bottom:12px; opacity:.5; }
+.empty-msg { font-size:15px; color:var(--text-mid); }
+.empty-sub { font-size:13px; margin-top:6px; }
+
+/* ── Section Label ── */
+.section-label { font-size:11px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--text-dim); padding:16px 14px 4px; }
+
+/* ── Detail Views ── */
+.back-btn { display:flex; align-items:center; gap:6px; color:var(--gold); font-size:14px; font-weight:500; cursor:pointer; padding:14px 14px 0; }
+.detail-header { padding:10px 14px 0; }
+.detail-wo { font-size:12px; font-weight:700; color:var(--gold-dim); letter-spacing:1px; margin-bottom:4px; }
+.detail-name { font-family:'DM Serif Display',serif; font-size:28px; color:var(--text); line-height:1.1; margin-bottom:4px; }
+.detail-contact { font-size:13px; color:var(--gold); text-decoration:none; display:block; margin-top:2px; }
+.detail-region { font-size:13px; color:var(--text-dim); margin-top:4px; }
+.detail-region-tag { display:inline-block; background:var(--surface3); border-radius:20px; padding:3px 10px; font-size:12px; color:var(--text-mid); margin-top:6px; }
+.detail-status-row { display:flex; align-items:center; gap:8px; padding:12px 14px 0; flex-wrap:wrap; }
+.detail-due { font-size:13px; color:var(--text-dim); padding:4px 14px 0; }
+.detail-due-overdue { color:var(--red) !important; font-weight:600; }
+.detail-section { margin:12px 14px 0; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px; }
+.detail-section h3 { font-size:10px; font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--text-dim); margin-bottom:10px; }
+.detail-row { display:flex; justify-content:space-between; align-items:baseline; padding:4px 0; }
+.detail-label { font-size:13px; color:var(--text-dim); }
+.detail-val { font-size:14px; color:var(--text); font-weight:500; text-align:right; max-width:65%; }
+.detail-notes { font-size:14px; color:var(--text-mid); line-height:1.6; }
+.detail-actions { padding:14px; display:flex; flex-direction:column; gap:8px; }
+.detail-stats-row { display:flex; gap:1px; margin:12px 14px 0; background:var(--border); border-radius:var(--radius); overflow:hidden; }
+.mini-stat { flex:1; background:var(--surface); padding:12px 8px; text-align:center; }
+.mini-val { font-family:'DM Serif Display',serif; font-size:18px; color:var(--gold-light); }
+.mini-label { font-size:11px; color:var(--text-dim); margin-top:2px; }
+
+/* ── Items Table ── */
+.items-table { width:100%; border-collapse:collapse; font-size:13px; }
+.items-table th { text-align:left; font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--text-dim); padding:0 0 8px; border-bottom:1px solid var(--border); }
+.items-table td { padding:8px 0; border-bottom:1px solid var(--border); color:var(--text-mid); vertical-align:top; }
+.items-table tbody tr:last-child td { border-bottom:none; }
+.items-table tfoot td { padding-top:10px; font-weight:600; color:var(--text); border-top:1px solid var(--border); border-bottom:none; }
+.no-items { font-size:13px; color:var(--text-dim); }
+
+/* ── Timeline ── */
+.timeline { display:flex; flex-direction:column; gap:8px; }
+.timeline-row { display:flex; justify-content:space-between; align-items:center; }
+.timeline-label { font-size:13px; color:var(--text-dim); }
+.timeline-val { font-size:13px; color:var(--text); }
+.timeline-empty { color:var(--surface3); }
+
+/* ── Customer Cards ── */
+.cust-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px; margin:10px 14px 0; cursor:pointer; transition:border-color .2s; animation:fadeUp .25s ease both; }
+.cust-card:active { border-color:var(--gold-dim); }
+.cust-name { font-weight:600; font-size:15px; }
+.cust-meta { font-size:12px; color:var(--text-dim); margin-top:4px; line-height:1.6; }
+.cust-region { color:var(--text-mid); }
+.cust-contact { font-size:12px; color:var(--text-dim); margin-top:3px; }
+
+/* ── Dashboard ── */
+.dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:10px 14px 0; }
+.stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px; cursor:pointer; transition:border-color .2s; animation:fadeUp .25s ease both; }
+.stat-card:active { border-color:var(--gold-dim); }
+.stat-card.full { grid-column:1/-1; }
+.stat-label { font-size:11px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; }
+.stat-val { font-family:'DM Serif Display',serif; font-size:30px; color:var(--gold-light); line-height:1; }
+.stat-sub { font-size:12px; color:var(--text-dim); margin-top:4px; }
+
+/* ── Settings ── */
+.settings-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:0 14px; }
+.settings-row { display:flex; align-items:center; padding:13px 14px; gap:12px; cursor:pointer; transition:background .15s; border-bottom:1px solid var(--border); }
+.settings-row:last-child { border-bottom:none; }
+.settings-row:active { background:var(--surface2); }
+.settings-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.settings-icon svg { width:18px; height:18px; }
+.icon-gold { background:rgba(201,168,76,.15); color:var(--gold); }
+.icon-blue { background:rgba(74,127,193,.15); color:var(--blue); }
+.icon-green { background:rgba(74,158,107,.15); color:var(--green); }
+.icon-red { background:rgba(193,74,74,.15); color:var(--red); }
+.icon-amber { background:rgba(201,125,42,.15); color:var(--amber); }
+.settings-text { flex:1; min-width:0; }
+.settings-title { font-size:15px; font-weight:500; color:var(--text); }
+.settings-desc { font-size:12px; color:var(--text-dim); margin-top:2px; }
+.settings-chevron { color:var(--text-dim); flex-shrink:0; }
+.toggle { width:44px; height:26px; border-radius:13px; background:var(--surface3); border:2px solid var(--border); flex-shrink:0; position:relative; transition:background .2s; }
+.toggle::after { content:''; position:absolute; width:18px; height:18px; border-radius:50%; background:var(--text-dim); top:2px; left:2px; transition:transform .2s, background .2s; }
+.toggle-on { background:var(--gold-dim); border-color:var(--gold); }
+.toggle-on::after { transform:translateX(18px); background:var(--gold); }
+
+/* ── Delivery Actions ── */
+.delivery-actions { display:flex; gap:8px; margin-top:12px; }
+
+/* ── Buttons ── */
+.btn { width:100%; padding:13px; border-radius:var(--radius-sm); font-size:15px; font-weight:600; font-family:'DM Sans',sans-serif; cursor:pointer; border:none; transition:opacity .15s, transform .1s; text-align:center; }
+.btn:active { transform:scale(.98); }
+.btn:disabled { opacity:.4; cursor:not-allowed; }
+.btn-primary { background:var(--gold); color:var(--bg); }
+.btn-ghost { background:transparent; color:var(--text-dim); border:1px solid var(--border); }
+.btn-danger { background:var(--red-bg); color:var(--red); border:1px solid var(--red); }
+.btn-danger-ghost { background:transparent; color:var(--red); border:1px solid var(--red-bg); }
+.btn-status-amber { background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber); }
+.btn-status-blue { background:var(--blue-bg); color:var(--blue); border:1px solid var(--blue); }
+.btn-status-green { background:var(--green-bg); color:var(--green); border:1px solid var(--green); }
+.btn-sm { padding:9px; font-size:13px; }
+
+/* ── Modal ── */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:200; display:flex; align-items:flex-end; opacity:0; pointer-events:none; transition:opacity .25s; }
+.modal-overlay.open { opacity:1; pointer-events:all; }
+.modal { background:var(--surface); border-radius:22px 22px 0 0; width:100%; padding:20px 18px calc(28px + env(safe-area-inset-bottom)); max-height:94dvh; overflow-y:auto; transform:translateY(40px); transition:transform .28s cubic-bezier(.34,1.06,.64,1); }
+.modal-overlay.open .modal { transform:translateY(0); }
+.modal::-webkit-scrollbar { display:none; }
+.modal-handle { width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 18px; }
+.modal-title { font-family:'DM Serif Display',serif; font-size:22px; color:var(--gold-light); margin-bottom:18px; }
+
+/* ── Form Fields ── */
+.field { margin-bottom:14px; }
+.field label { display:block; font-size:11px; font-weight:700; color:var(--text-dim); letter-spacing:.7px; text-transform:uppercase; margin-bottom:6px; }
+.field input, .field textarea, .field select {
+  width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm);
+  padding:11px 13px; color:var(--text); font-size:15px; font-family:'DM Sans',sans-serif;
+  outline:none; -webkit-appearance:none; appearance:none;
+}
+.field input:focus, .field textarea:focus, .field select:focus { border-color:var(--gold-dim); }
+.field textarea { min-height:70px; resize:vertical; }
+.field-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.field-hint { font-size:12px; color:var(--text-dim); margin-top:5px; line-height:1.5; }
+.field-hint code { color:var(--gold); font-family:monospace; }
+
+/* ── Item Rows (Job form) ── */
+.items-label { font-size:11px; font-weight:700; color:var(--text-dim); letter-spacing:.7px; text-transform:uppercase; margin-bottom:8px; }
+.item-row { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px; margin-bottom:8px; }
+.item-desc { width:100%; background:transparent; border:none; border-bottom:1px solid var(--border); padding:4px 0 8px; color:var(--text); font-size:14px; font-family:'DM Sans',sans-serif; outline:none; margin-bottom:8px; }
+.item-desc::placeholder { color:var(--text-dim); }
+.item-nums { display:flex; gap:8px; align-items:center; }
+.item-qty { width:60px; background:var(--surface3); border:1px solid var(--border); border-radius:6px; padding:7px 8px; color:var(--text); font-size:14px; font-family:'DM Sans',sans-serif; outline:none; text-align:center; }
+.item-price { flex:1; background:var(--surface3); border:1px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:14px; font-family:'DM Sans',sans-serif; outline:none; }
+.item-del { background:none; border:none; color:var(--red); font-size:16px; cursor:pointer; padding:4px 8px; }
+.item-del:disabled { color:var(--border); cursor:default; }
+.add-item-btn { display:flex; align-items:center; gap:6px; color:var(--gold); font-size:14px; font-weight:500; cursor:pointer; padding:4px 0 12px; background:none; border:none; font-family:'DM Sans',sans-serif; }
+.item-total-row { display:flex; justify-content:flex-end; align-items:center; gap:8px; padding:4px 0 12px; border-top:1px solid var(--border); margin-top:2px; }
+.item-total-label { font-size:12px; color:var(--text-dim); }
+.item-total-val { font-family:'DM Serif Display',serif; font-size:18px; color:var(--gold); }
+
+/* ── Update Modal ── */
+.update-checking { text-align:center; padding:30px 0; color:var(--text-mid); font-size:14px; }
+.update-all-good { text-align:center; color:var(--green); font-size:15px; font-weight:600; padding:16px 0; }
+.update-error { text-align:center; color:var(--red); font-size:14px; padding:16px 0; }
+.update-count { text-align:center; color:var(--amber); font-size:15px; font-weight:600; padding:8px 0 16px; }
+.update-section-label { font-size:10px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; }
+.update-row { background:var(--surface2); border-radius:var(--radius-sm); padding:10px 12px; margin-bottom:6px; }
+.update-row-pending { border-left:3px solid var(--amber); }
+.update-row-ok { border-left:3px solid var(--green); }
+.update-file { font-size:13px; font-weight:600; color:var(--text); font-family:monospace; }
+.update-desc { font-size:12px; color:var(--text-dim); margin-top:2px; }
+.update-versions { font-size:11px; color:var(--text-dim); margin-top:4px; }
+
+/* ── Toast ── */
+#toast { position:fixed; top:calc(env(safe-area-inset-top) + 14px); left:50%; transform:translateX(-50%) translateY(-80px); background:var(--surface3); border:1px solid var(--border); border-radius:30px; padding:10px 20px; font-size:14px; font-weight:500; color:var(--text); z-index:999; transition:transform .3s cubic-bezier(.34,1.4,.64,1); white-space:nowrap; pointer-events:none; }
+#toast.show { transform:translateX(-50%) translateY(0); }
+#toast.toast-success { border-color:var(--green); color:var(--green); }
+#toast.toast-error { border-color:var(--red); color:var(--red); }
+
+/* ── Spinner ── */
+.spinner { display:inline-block; width:14px; height:14px; border:2px solid var(--border); border-top-color:var(--gold); border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:6px; }
+
+/* ── Animations ── */
+@keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="screen"></div>
+
+  <!-- Bottom Nav -->
+  <div id="nav">
+    <div class="nav-btn active" id="nav-jobs" onclick="Jobs.show()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      <span>Jobs</span>
+    </div>
+    <div class="nav-btn" id="nav-delivery" onclick="Delivery.show()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="14" height="10" rx="1"/><circle cx="12" cy="21" r="1"/><circle cx="20" cy="21" r="1"/></svg>
+      <span>Delivery</span>
+    </div>
+    <div class="nav-btn" id="nav-customers" onclick="Customers.show()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.85"/></svg>
+      <span>Customers</span>
+    </div>
+    <div class="nav-btn" id="nav-invoices" onclick="Invoices.show()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <span>Invoices</span>
+    </div>
+    <div class="nav-btn" id="nav-dashboard" onclick="Dashboard.show()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>Dashboard</span>
+    </div>
+    <div class="nav-btn" id="nav-settings" onclick="Settings.show()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Settings</span>
+    </div>
+  </div>
+
+  <!-- FAB -->
+  <div id="fab" onclick="UI.currentTab==='customers'?Customers.openNew():Jobs.openNew()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MODALS
+     ═══════════════════════════════════════════════════════ -->
+
+<!-- Job Modal -->
+<div class="modal-overlay" id="jobModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">New Work Order</div>
+    <div class="field">
+      <label>Customer</label>
+      <select id="jm-customer" onchange="Jobs._onCustomerChange(this.value)">
+        <option value="">Select customer...</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Delivery Method</label>
+      <select id="jm-delivery">
+        <option value="dropoff">🚗 Drop-off</option>
+        <option value="mail">✉️ Mail</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Due Date</label>
+      <input type="date" id="jm-due">
+      <div class="field-hint">Auto-calculated from customer's region. Tap to override.</div>
+    </div>
+    <div style="margin-bottom:14px">
+      <div class="items-label">Items</div>
+      <div id="jm-items"></div>
+      <button class="add-item-btn" onclick="Jobs._addItem()">+ Add Item</button>
+      <div class="item-total-row">
+        <span class="item-total-label">Total</span>
+        <span class="item-total-val" id="jm-total">$0.00</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Notes</label>
+      <textarea id="jm-notes" placeholder="Special requests, blade type, handle issues..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="Jobs.save()">Save Work Order</button>
+    <button class="btn btn-ghost" onclick="UI.closeModal('jobModal')" style="margin-top:8px">Cancel</button>
+  </div>
+</div>
+
+<!-- Customer Modal -->
+<div class="modal-overlay" id="customerModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="cm-title">New Customer</div>
+    <div class="field"><label>Name</label><input type="text" id="cm-name" placeholder="Full name" autocomplete="off"></div>
+    <div class="field-row">
+      <div class="field"><label>Phone</label><input type="tel" id="cm-phone" placeholder="04xx xxx xxx"></div>
+      <div class="field"><label>Email</label><input type="email" id="cm-email" placeholder="email@example.com" autocapitalize="none"></div>
+    </div>
+    <div class="field"><label>Address</label><input type="text" id="cm-address" placeholder="Street address" autocomplete="off"></div>
+    <div class="field">
+      <label>Region</label>
+      <select id="cm-region" onchange="Customers.onRegionChange(this.value)">
+        <option value="">No region</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" onclick="Customers.save()">Save Customer</button>
+    <button class="btn btn-ghost" onclick="UI.closeModal('customerModal')" style="margin-top:8px">Cancel</button>
+    <button class="btn btn-danger" id="cm-delete" onclick="UI.confirm('Delete customer?', ()=>Customers.delete(document.getElementById(\'cm-name\').dataset.id))" style="display:none;margin-top:8px">Delete Customer</button>
+  </div>
+</div>
+
+<!-- Region Modal -->
+<div class="modal-overlay" id="regionModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="rm-title">New Region</div>
+    <div class="field"><label>Region Name</label><input type="text" id="rm-name" placeholder="e.g. Northern Suburbs, Mail-In" autocomplete="off"></div>
+    <div class="field">
+      <label>Turnaround Time (days)</label>
+      <input type="number" id="rm-days" placeholder="7" min="1" max="60">
+      <div class="field-hint">Used to auto-calculate the due date when a job is created.</div>
+    </div>
+    <button class="btn btn-primary" onclick="Settings.saveRegion()">Save Region</button>
+    <button class="btn btn-ghost" onclick="UI.closeModal('regionModal')" style="margin-top:8px">Cancel</button>
+    <button class="btn btn-danger" id="rm-delete" onclick="Settings.deleteRegion(Settings._editingRegionId)" style="display:none;margin-top:8px">Delete Region</button>
+  </div>
+</div>
+
+<!-- Business Modal -->
+<div class="modal-overlay" id="businessModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Business Profile</div>
+    <div class="field"><label>Business Name</label><input type="text" id="bm-name" placeholder="Your business name" autocomplete="off"></div>
+    <div class="field"><label>ABN</label><input type="text" id="bm-abn" placeholder="XX XXX XXX XXX" autocomplete="off"></div>
+    <div class="field"><label>Address</label><input type="text" id="bm-address" placeholder="Trading address" autocomplete="off"></div>
+    <div class="field-row">
+      <div class="field"><label>Phone</label><input type="tel" id="bm-phone"></div>
+      <div class="field"><label>Email</label><input type="email" id="bm-email" autocapitalize="none"></div>
+    </div>
+    <div class="field">
+      <label>Payment Terms (days)</label>
+      <input type="number" id="bm-terms" placeholder="14" min="1">
+    </div>
+    <div class="field">
+      <label>Logo</label>
+      <div id="bm-logo-preview" style="margin-bottom:8px"></div>
+      <input type="file" accept="image/*" onchange="Settings.handleLogoUpload(this)" style="color:var(--text-dim);font-size:13px">
+    </div>
+    <button class="btn btn-primary" onclick="Settings.saveBusinessProfile()">Save Profile</button>
+    <button class="btn btn-ghost" onclick="UI.closeModal('businessModal')" style="margin-top:8px">Cancel</button>
+  </div>
+</div>
+
+<!-- Payment Details Modal -->
+<div class="modal-overlay" id="paymentModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Payment Details</div>
+    <div class="field"><label>Account Name</label><input type="text" id="pm-accname" placeholder="Name on account" autocomplete="off"></div>
+    <div class="field-row">
+      <div class="field"><label>BSB</label><input type="text" id="pm-bsb" placeholder="000-000"></div>
+      <div class="field"><label>Account Number</label><input type="text" id="pm-account" placeholder="XXXXXXXX"></div>
+    </div>
+    <button class="btn btn-primary" onclick="Settings.savePaymentDetails()">Save</button>
+    <button class="btn btn-ghost" onclick="UI.closeModal('paymentModal')" style="margin-top:8px">Cancel</button>
+  </div>
+</div>
+
+<!-- GitHub Modal -->
+<div class="modal-overlay" id="ghModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">GitHub Config</div>
+    <div class="field-hint" style="margin-bottom:14px">
+      Host this app on GitHub Pages. Your app URL will be:<br>
+      <code>your-username.github.io/your-repo</code>
+    </div>
+    <div class="field"><label>GitHub Username</label><input type="text" id="gh-user" placeholder="your-username" autocomplete="off" autocapitalize="none"></div>
+    <div class="field"><label>Repository Name</label><input type="text" id="gh-repo" placeholder="sharp-jobs" autocomplete="off" autocapitalize="none"></div>
+    <div class="field"><label>Branch</label><input type="text" id="gh-branch" placeholder="main" autocomplete="off" autocapitalize="none"></div>
+    <div class="field">
+      <label>Personal Access Token</label>
+      <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
+      <div class="field-hint">Required for backup & update. Generate at GitHub → Settings → Developer settings → Personal access tokens. Grant <code>repo</code> scope.</div>
+    </div>
+    <button class="btn btn-primary" onclick="Settings.saveGhConfig()">Save</button>
+    <button class="btn btn-ghost" onclick="UI.closeModal('ghModal')" style="margin-top:8px">Cancel</button>
+  </div>
+</div>
+
+<!-- Update Modal -->
+<div class="modal-overlay" id="updateModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">App Updates</div>
+    <div id="update-content"><div class="update-checking"><span class="spinner"></span> Checking...</div></div>
+  </div>
+</div>
+
+<!-- Invoice Payment Modal -->
+<div class="modal-overlay" id="invoicePaymentModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Record Payment</div>
+    <div class="field"><label>Amount ($)</label><input type="number" id="pay-amount" placeholder="0.00" step="0.01" min="0.01"></div>
+    <div class="field">
+      <label>Payment Method</label>
+      <select id="pay-method">
+        <option value="cash">Cash</option>
+        <option value="bank_transfer">Bank Transfer</option>
+        <option value="card">Card</option>
+      </select>
+    </div>
+    <div class="field"><label>Note (optional)</label><input type="text" id="pay-note" placeholder="Reference, receipt number..." autocomplete="off"></div>
+    <button class="btn btn-primary" onclick="Invoices.savePayment()">Record Payment</button>
+    <button class="btn btn-ghost" onclick="UI.closeModal('invoicePaymentModal')" style="margin-top:8px">Cancel</button>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal" style="max-height:auto">
+    <div class="modal-handle"></div>
+    <p id="confirmMessage" style="font-size:15px;color:var(--text-mid);margin-bottom:18px;line-height:1.5"></p>
+    <button id="confirmOk" class="btn btn-danger">Confirm</button>
+    <button class="btn btn-ghost" onclick="UI.closeModal('confirmModal')" style="margin-top:8px">Cancel</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Hidden inputs -->
+<input type="file" id="restore-input" accept=".json" style="display:none" onchange="Settings.handleRestoreFile(this)">
+
+<!-- ═══════════════════════════════════════════════════════
+     SCRIPTS — load order matters
+     ═══════════════════════════════════════════════════════ -->
+<script src="js/db.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/updater.js"></script>
+<script src="js/jobs.js"></script>
+<script src="js/delivery.js"></script>
+<script src="js/customers.js"></script>
+<script src="js/invoices.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/settings.js"></script>
+
+<script>
+/* ── App Init ── */
+(function init() {
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW:', e));
+  }
+
+  // Dismiss modals on overlay tap
+  UI.initModalDismiss();
+
+  // Mark installed versions on first load
+  const installed = DB.getInstalledVersions();
+  if (!Object.keys(installed).length) {
+    const defaults = {
+      'index.html':'1.0.0','sw.js':'1.0.0','manifest.json':'1.0.0',
+      'js/db.js':'1.0.0','js/ui.js':'1.0.0','js/jobs.js':'1.0.0',
+      'js/delivery.js':'1.0.0','js/customers.js':'1.0.0',
+      'js/invoices.js':'1.0.0','js/dashboard.js':'1.0.0',
+      'js/settings.js':'1.0.0','js/updater.js':'1.0.0'
+    };
+    DB.saveInstalledVersions(defaults);
+  }
+
+  // Check overdue invoices on load
+  DB.checkOverdueInvoices();
+
+  // Boot to Jobs tab
+  Jobs.show();
+})();
+</script>
+</body>
+</html>
