@@ -1,6 +1,6 @@
 /* =============================================================
    SHARP JOBS — Invoices Module
-   Version: 1.0.0
+   Version: 1.1.0
    Description: Invoice list, detail, payment tracking, PDF/print.
    To modify invoice behaviour or layout: edit this file only.
    ============================================================= */
@@ -8,10 +8,11 @@
 const Invoices = (() => {
 
   let filterStatus = 'all';
+  let adhocItemRows = [];
 
   function show() {
     UI.setTab('invoices');
-    document.getElementById('fab').style.display = 'none';
+    document.getElementById('fab').style.display = 'flex';
     DB.checkOverdueInvoices();
     render();
   }
@@ -169,85 +170,143 @@ const Invoices = (() => {
     show();
   }
 
-  // ── Print View ────────────────────────────────────────────
+  // ── Print View (in-app, iOS safe) ─────────────────────────
   function printView(id) {
     const inv = DB.getInvoice(id);
     const customer = DB.getCustomer(inv.customerId);
     const settings = DB.getSettings();
     const title = inv.gstEnabled ? 'Tax Invoice' : 'Invoice';
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>${title} ${inv.invNumber}</title>
-    <style>
-      body { font-family: -apple-system, sans-serif; max-width: 680px; margin: 40px auto; padding: 0 20px; color: #222; }
-      .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; }
-      .biz-name { font-size: 22px; font-weight: 700; }
-      .biz-detail { font-size: 13px; color: #555; line-height: 1.6; }
-      .inv-title { font-size: 28px; font-weight: 700; text-align: right; }
-      .inv-meta { font-size: 13px; color: #555; text-align: right; }
-      .to { margin-bottom: 24px; }
-      .to-label { font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px; }
-      table { width: 100%; border-collapse: collapse; margin: 24px 0; }
-      th { background: #f5f5f5; padding: 10px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
-      td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
-      tfoot td { border-top: 2px solid #222; font-weight: 600; }
-      .payment-box { background: #f9f9f9; border-radius: 8px; padding: 16px; margin-top: 24px; }
-      .payment-box h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: #888; margin-bottom: 8px; }
-      .abn { font-size: 12px; color: #888; margin-top: 4px; }
-      @media print { body { margin: 0; } }
-    </style></head><body>
-    <div class="header">
-      <div>
-        ${settings.logo ? `<img src="${settings.logo}" style="max-height:60px;margin-bottom:8px"><br>` : ''}
-        <div class="biz-name">${settings.businessName || 'Your Business'}</div>
-        ${settings.abn ? `<div class="abn">ABN: ${settings.abn}</div>` : ''}
-        <div class="biz-detail">
-          ${settings.address ? settings.address + '<br>' : ''}
-          ${settings.phone ? settings.phone + '<br>' : ''}
-          ${settings.email ? settings.email : ''}
-        </div>
+    const printHTML = `
+      <div class="print-close-bar">
+        <button class="btn btn-ghost btn-sm" onclick="Invoices._closePrint()" style="width:auto;padding:8px 16px">✕ Close</button>
+        <button class="btn btn-primary btn-sm" onclick="window.print()" style="width:auto;padding:8px 16px">🖨️ Print / Save PDF</button>
       </div>
-      <div>
-        <div class="inv-title">${title}</div>
-        <div class="inv-meta">
-          ${inv.invNumber}<br>
-          Date: ${UI.fmtDate(inv.createdAt)}<br>
-          Due: ${UI.fmtDate(inv.paymentDueDate)}
+      <div class="print-doc" id="printDoc">
+        <div class="pdoc-header">
+          <div>
+            ${settings.logo ? `<img src="${settings.logo}" class="pdoc-logo">` : ''}
+            <div class="pdoc-bizname">${settings.businessName || 'Your Business'}</div>
+            ${settings.abn ? `<div class="pdoc-abn">ABN: ${settings.abn}</div>` : ''}
+            <div class="pdoc-bizdetail">
+              ${[settings.address, settings.phone, settings.email].filter(Boolean).join('<br>')}
+            </div>
+          </div>
+          <div class="pdoc-invblock">
+            <div class="pdoc-title">${title}</div>
+            <div class="pdoc-meta">${inv.invNumber}</div>
+            <div class="pdoc-meta">Date: ${UI.fmtDate(inv.createdAt)}</div>
+            <div class="pdoc-meta">Due: ${UI.fmtDate(inv.paymentDueDate)}</div>
+          </div>
         </div>
-      </div>
-    </div>
-    ${customer ? `<div class="to"><div class="to-label">Bill To</div>
-      <strong>${customer.name}</strong><br>
-      ${customer.phone ? customer.phone + '<br>' : ''}
-      ${customer.email ? customer.email + '<br>' : ''}
-      ${customer.address ? customer.address : ''}
-    </div>` : ''}
-    <table>
-      <thead><tr><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
-      <tbody>
-        ${inv.items.map(i=>`<tr><td>${i.description}</td><td>${i.qty}</td><td>${UI.fmtMoney(i.unitPrice)}</td><td>${UI.fmtMoney((parseFloat(i.unitPrice)||0)*(parseInt(i.qty)||1))}</td></tr>`).join('')}
-      </tbody>
-      <tfoot>
-        <tr><td colspan="3">Subtotal</td><td>${UI.fmtMoney(inv.subtotal)}</td></tr>
-        ${inv.gstEnabled ? `<tr><td colspan="3">GST (10%)</td><td>${UI.fmtMoney(inv.gstAmount)}</td></tr>` : ''}
-        <tr><td colspan="3"><strong>Total</strong></td><td><strong>${UI.fmtMoney(inv.total)}</strong></td></tr>
-      </tfoot>
-    </table>
-    ${(settings.bsb || settings.accountNumber) ? `<div class="payment-box">
-      <h3>Payment Details</h3>
-      ${settings.accountName ? `<strong>${settings.accountName}</strong><br>` : ''}
-      ${settings.bsb ? `BSB: ${settings.bsb}<br>` : ''}
-      ${settings.accountNumber ? `Account: ${settings.accountNumber}` : ''}
-    </div>` : ''}
-    </body></html>`;
+        ${customer ? `<div class="pdoc-to">
+          <div class="pdoc-to-label">Bill To</div>
+          <strong>${customer.name}</strong><br>
+          ${[customer.phone, customer.email, customer.address].filter(Boolean).join('<br>')}
+        </div>` : ''}
+        <table class="pdoc-table">
+          <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead>
+          <tbody>
+            ${inv.items.map(i => `<tr><td>${i.description}</td><td>${i.qty}</td><td>${UI.fmtMoney(i.unitPrice)}</td><td>${UI.fmtMoney((parseFloat(i.unitPrice)||0)*(parseInt(i.qty)||1))}</td></tr>`).join('')}
+          </tbody>
+          <tfoot>
+            <tr><td colspan="3">Subtotal</td><td>${UI.fmtMoney(inv.subtotal)}</td></tr>
+            ${inv.gstEnabled ? `<tr><td colspan="3">GST (10%)</td><td>${UI.fmtMoney(inv.gstAmount)}</td></tr>` : ''}
+            <tr class="pdoc-total-row"><td colspan="3"><strong>Total</strong></td><td><strong>${UI.fmtMoney(inv.total)}</strong></td></tr>
+          </tfoot>
+        </table>
+        ${(settings.bsb || settings.accountNumber) ? `<div class="pdoc-payment">
+          <div class="pdoc-payment-label">Payment Details</div>
+          ${settings.accountName ? `<strong>${settings.accountName}</strong><br>` : ''}
+          ${settings.bsb ? `BSB: ${settings.bsb}<br>` : ''}
+          ${settings.accountNumber ? `Account: ${settings.accountNumber}` : ''}
+        </div>` : ''}
+      </div>`;
 
-    const win = window.open('', '_blank');
-    win.document.write(html);
-    win.document.close();
-    setTimeout(() => win.print(), 500);
+    document.getElementById('fab').style.display = 'none';
+    UI.render(printHTML);
+  }
+
+  function _closePrint() { showDetail(DB.getInvoices()[0]?.id); Invoices.show(); }
+
+  // ── Ad-hoc Invoice ────────────────────────────────────────
+  function openAdHoc() {
+    adhocItemRows = [{ id: DB.uid(), description: '', qty: 1, unitPrice: '' }];
+    const customers = DB.getCustomers();
+    const settings = DB.getSettings();
+    document.getElementById('ai-customer').innerHTML =
+      `<option value="">No customer (walk-in)</option>` +
+      customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    document.getElementById('ai-gst').checked = settings.gstEnabled;
+    const defaultDue = new Date(Date.now() + settings.paymentTermsDays * 86400000).toISOString().split('T')[0];
+    document.getElementById('ai-due').value = defaultDue;
+    _renderAdhocItems();
+    UI.openModal('adhocInvModal');
+  }
+
+  function _renderAdhocItems() {
+    const container = document.getElementById('ai-items');
+    container.innerHTML = adhocItemRows.map(item => `
+      <div class="item-row">
+        <input class="item-desc" type="text" placeholder="Description" value="${item.description}"
+          oninput="Invoices._adhocItemChange('${item.id}','description',this.value)" autocomplete="off">
+        <div class="item-nums">
+          <input class="item-qty" type="number" placeholder="Qty" value="${item.qty}" min="1"
+            oninput="Invoices._adhocItemChange('${item.id}','qty',this.value)">
+          <input class="item-price" type="number" placeholder="Unit $" value="${item.unitPrice}" step="0.5" min="0"
+            oninput="Invoices._adhocItemChange('${item.id}','price',this.value)">
+          <button class="item-del" onclick="Invoices._adhocRemoveItem('${item.id}')" ${adhocItemRows.length===1?'disabled':''}>✕</button>
+        </div>
+      </div>`).join('');
+    _updateAdhocTotal();
+  }
+
+  function _updateAdhocTotal() {
+    const total = adhocItemRows.reduce((s,i)=>s+(parseFloat(i.unitPrice)||0)*(parseInt(i.qty)||1),0);
+    const el = document.getElementById('ai-total');
+    if (el) el.textContent = UI.fmtMoney(total);
+  }
+
+  function _adhocItemChange(id, field, val) {
+    const item = adhocItemRows.find(i => i.id === id);
+    if (!item) return;
+    if (field === 'description') item.description = val;
+    if (field === 'qty') item.qty = val;
+    if (field === 'price') item.unitPrice = val;
+    _updateAdhocTotal();
+  }
+
+  function _adhocAddItem() {
+    adhocItemRows.push({ id: DB.uid(), description: '', qty: 1, unitPrice: '' });
+    _renderAdhocItems();
+  }
+
+  function _adhocRemoveItem(id) {
+    if (adhocItemRows.length === 1) return;
+    adhocItemRows = adhocItemRows.filter(i => i.id !== id);
+    _renderAdhocItems();
+  }
+
+  function saveAdHoc() {
+    const items = adhocItemRows.filter(i => i.description.trim());
+    if (!items.length) { UI.toast('Add at least one item', 'error'); return; }
+    const dueVal = document.getElementById('ai-due').value;
+    const inv = DB.createAdHocInvoice({
+      customerId: document.getElementById('ai-customer').value || null,
+      items,
+      gstEnabled: document.getElementById('ai-gst').checked,
+      paymentDueDate: dueVal ? new Date(dueVal).getTime() : null
+    });
+    UI.toast(`${inv.invNumber} created`, 'success');
+    UI.closeModal('adhocInvModal');
+    showDetail(inv.id);
   }
 
   function _filter(s) { filterStatus = s; render(); }
 
-  return { show, showDetail, openPayment, savePayment, markSent, printView, delete: del, _filter };
+  return {
+    show, showDetail, openPayment, savePayment, markSent, printView, _closePrint,
+    openAdHoc, saveAdHoc, _adhocAddItem, _adhocRemoveItem, _adhocItemChange,
+    delete: del, _filter
+  };
 })();

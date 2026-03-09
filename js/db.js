@@ -1,6 +1,6 @@
 /* =============================================================
    SHARP JOBS — Database / Storage Layer
-   Version: 1.0.0
+   Version: 1.1.0
    Description: All data models, read/write, and ID generation.
    To modify data structure: edit this file only.
    ============================================================= */
@@ -226,6 +226,35 @@ const DB = (() => {
     });
     saveInvoices(invoices);
   }
+  function createAdHocInvoice({ customerId, items, gstEnabled, paymentDueDate }) {
+    const settings = getSettings();
+    const useGst = gstEnabled !== undefined ? gstEnabled : settings.gstEnabled;
+    const subtotal = (items||[]).reduce((s, i) => s + (parseFloat(i.unitPrice)||0) * (parseInt(i.qty)||1), 0);
+    const gstAmount = useGst ? subtotal * 0.1 : 0;
+    const total = subtotal + gstAmount;
+    const invoices = getInvoices();
+    const invNumber = nextId('inv_adhoc', 'INV-A');
+    const inv = {
+      id: uid(),
+      invNumber,
+      woId: null,
+      customerId: customerId || null,
+      status: 'draft',
+      gstEnabled: useGst,
+      items: (items||[]).map(i => ({ ...i })),
+      subtotal, gstAmount, total,
+      paymentDueDate: paymentDueDate || (Date.now() + (settings.paymentTermsDays * 86400000)),
+      payments: [],
+      amountPaid: 0,
+      createdAt: Date.now(),
+      sentAt: null,
+      adhoc: true
+    };
+    invoices.unshift(inv);
+    saveInvoices(invoices);
+    return inv;
+  }
+
   function deleteInvoice(id) { saveInvoices(getInvoices().filter(i => i.id !== id)); }
   function getInvoice(id) { return getInvoices().find(i => i.id === id) || null; }
 
@@ -302,7 +331,7 @@ const DB = (() => {
     // Jobs
     getJobs, addJob, updateJob, updateJobStatus, deleteJob, getJob, getDeliveryQueue,
     // Invoices
-    getInvoices, createInvoiceFromJob, updateInvoice, addPayment, deleteInvoice, getInvoice, checkOverdueInvoices,
+    getInvoices, createInvoiceFromJob, createAdHocInvoice, updateInvoice, addPayment, deleteInvoice, getInvoice, checkOverdueInvoices,
     // Data
     exportAllData, importAllData,
     calcDueDate, getStats, uid

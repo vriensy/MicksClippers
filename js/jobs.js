@@ -1,6 +1,6 @@
 /* =============================================================
    SHARP JOBS — Jobs / Work Orders Module
-   Version: 1.0.0
+   Version: 1.2.0
    Description: All work order logic — list, detail, create, edit.
    To modify job behaviour or fields: edit this file only.
    ============================================================= */
@@ -10,6 +10,7 @@ const Jobs = (() => {
   let filterStatus = 'all';
   let searchQ = '';
   let editingId = null;
+  const unlockedJobs = new Set(); // session-only unlock tracker
 
   // ── Show Jobs List ────────────────────────────────────────
   function show() {
@@ -91,19 +92,46 @@ const Jobs = (() => {
     </div>`;
   }
 
+  // ── Lock Helpers ──────────────────────────────────────────
+  function isJobPaid(job) {
+    if (!job.invoiceId) return false;
+    const inv = DB.getInvoice(job.invoiceId);
+    return inv && inv.status === 'paid';
+  }
+  function isLocked(job) {
+    return isJobPaid(job) && !unlockedJobs.has(job.id);
+  }
+  function unlock(id) {
+    UI.confirm(
+      'This job is paid and locked. Unlock to make changes?',
+      () => { unlockedJobs.add(id); showDetail(id); },
+      true
+    );
+  }
+
   // ── Job Detail ────────────────────────────────────────────
   function showDetail(id) {
     const job = DB.getJob(id);
     if (!job) return;
+    _currentDetailId = id;
     const customer = DB.getCustomer(job.customerId);
     const region = customer ? DB.getRegion(customer.regionId) : null;
     const overdue = UI.isOverdue(job);
     const total = job.items.reduce((s,i)=>s+(parseFloat(i.unitPrice)||0)*(parseInt(i.qty)||1),0);
+    const locked = isLocked(job);
+    const paid = isJobPaid(job);
     UI.setTab('jobs');
     document.getElementById('fab').style.display = 'none';
 
     UI.render(`
       ${UI.backBtn('Work Orders', 'Jobs.show()')}
+
+      ${paid ? `<div class="lock-banner${locked?'':' lock-banner-unlocked'}">
+        ${locked
+          ? `🔒 <span>Paid & locked</span><button class="lock-unlock-btn" onclick="Jobs.unlock('${job.id}')">Unlock to Edit</button>`
+          : `🔓 <span>Unlocked for editing</span>`}
+      </div>` : ''}
+
       <div class="detail-header">
         <div class="detail-wo">${job.woNumber}</div>
         <div class="detail-name">${customer ? customer.name : 'Unknown'}</div>
@@ -114,6 +142,7 @@ const Jobs = (() => {
       <div class="detail-status-row">
         ${UI.jobBadge(job.status)}
         ${overdue ? '<span class="badge badge-red">OVERDUE</span>' : ''}
+        ${paid ? '<span class="badge badge-green">PAID</span>' : ''}
         <span class="delivery-method">${job.deliveryMethod === 'mail' ? '✉️ Mail' : '🚗 Drop-off'}</span>
       </div>
 
@@ -139,32 +168,51 @@ const Jobs = (() => {
       <div class="detail-section">
         <h3>Timeline</h3>
         <div class="timeline">
-          ${timelineRow('Created', job.timestamps.created)}
-          ${timelineRow('Started', job.timestamps.started)}
-          ${timelineRow('Completed', job.timestamps.completed)}
-          ${timelineRow('Delivered / Mailed', job.timestamps.delivered)}
+          ${timelineRow('Created',          job.timestamps.created,   null,        true)}
+          ${timelineRow('Started',          job.timestamps.started,   'started',   locked)}
+          ${timelineRow('Completed',        job.timestamps.completed, 'completed', locked)}
+          ${timelineRow('Delivered/Mailed', job.timestamps.delivered, 'delivered', locked)}
         </div>
+        ${!locked ? `<div class="timeline-hint">Tap a date to edit it</div>` : ''}
       </div>
 
       <div class="detail-actions">
-        ${statusActions(job)}
-        <button class="btn btn-ghost" onclick="Jobs.openEdit('${job.id}')">✏️ Edit Job</button>
-        ${job.status === 'completed' || job.status === 'delivered' || job.status === 'mailed'
+        ${locked ? '' : statusActions(job)}
+        ${locked ? '' : `<button class="btn btn-ghost" onclick="Jobs.openEdit('${job.id}')">✏️ Edit Job</button>`}
+        ${!locked && (job.status === 'completed' || job.status === 'delivered' || job.status === 'mailed')
           ? job.invoiceId
             ? `<button class="btn btn-ghost" onclick="Invoices.showDetail('${job.invoiceId}')">🧾 View Invoice</button>`
             : `<button class="btn btn-primary" onclick="Jobs.convertToInvoice('${job.id}')">🧾 Convert to Invoice</button>`
-          : ''}
-        <button class="btn btn-danger-ghost" onclick="UI.confirm('Delete ${job.woNumber}? This cannot be undone.', () => Jobs.delete('${job.id}'))">Delete Job</button>
+          : job.invoiceId ? `<button class="btn btn-ghost" onclick="Invoices.showDetail('${job.invoiceId}')">🧾 View Invoice</button>` : ''}
+        ${locked ? '' : `<button class="btn btn-danger-ghost" onclick="UI.confirm('Delete ${job.woNumber}? This cannot be undone.', () => Jobs.delete('${job.id}'))">Delete Job</button>`}
       </div>
     `);
   }
 
-  function timelineRow(label, ts) {
-    return `<div class="timeline-row">
+  function timelineRow(label, ts, field, readOnly) {
+    const dateVal = ts ? new Date(ts).toISOString().split('T')[0] : '';
+    const timeVal = ts ? new Date(ts).toTimeString().slice(0,5) : '';
+    if (readOnly || !field) {
+      return `<div class="timeline-row">
+        <span class="timeline-label">${label}</span>
+        <span class="timeline-val${ts?'':' timeline-empty'}">${ts ? UI.fmtDateTime(ts) : '—'}</span>
+      </div>`;
+    }
+    // Editable row — date + time pickers
+    const jobId = _currentDetailId;
+    return `<div class="timeline-row timeline-row-edit">
       <span class="timeline-label">${label}</span>
-      <span class="timeline-val${ts ? '' : ' timeline-empty'}">${ts ? UI.fmtDateTime(ts) : '—'}</span>
+      <div class="timeline-inputs">
+        <input type="date" id="ti-date-${field}" class="timeline-date-input" value="${dateVal}"
+          onchange="Jobs._updateTimestamp('${jobId}','${field}',this.value,document.getElementById('ti-time-${field}').value)">
+        <input type="time" id="ti-time-${field}" class="timeline-time-input" value="${timeVal}"
+          onchange="Jobs._updateTimestamp('${jobId}','${field}',document.getElementById('ti-date-${field}').value,this.value)">
+      </div>
     </div>`;
   }
+
+  // store current detail id for timeline row callbacks
+  let _currentDetailId = null;
 
   function statusActions(job) {
     const s = job.status;
@@ -175,6 +223,13 @@ const Jobs = (() => {
       actions.push(`<button class="btn btn-status-green" onclick="Jobs.setStatus('${job.id}','delivered')">🚗 Mark Delivered</button>`);
       actions.push(`<button class="btn btn-status-green" onclick="Jobs.setStatus('${job.id}','mailed')">✉️ Mark Mailed</button>`);
     }
+    // Revert button — available for any status beyond not_started
+    const prevMap = { in_progress: 'not_started', completed: 'in_progress', delivered: 'completed', mailed: 'completed' };
+    const prevLabels = { not_started: 'Not Started', in_progress: 'In Progress', completed: 'Completed' };
+    if (prevMap[s]) {
+      const prev = prevMap[s];
+      actions.push(`<button class="btn btn-ghost" onclick="Jobs.revertStatus('${job.id}','${prev}')">↩ Revert to ${prevLabels[prev]}</button>`);
+    }
     return actions.join('');
   }
 
@@ -183,6 +238,38 @@ const Jobs = (() => {
     DB.updateJobStatus(id, status);
     UI.toast(`Status updated`, 'success');
     showDetail(id);
+  }
+
+  // ── Revert Status ─────────────────────────────────────────
+  function revertStatus(id, prevStatus) {
+    const job = DB.getJob(id);
+    if (!job) return;
+    // Clear timestamps for the status being reverted from
+    const timestamps = { ...job.timestamps };
+    if (job.status === 'in_progress') timestamps.started = null;
+    if (job.status === 'completed') timestamps.completed = null;
+    if (job.status === 'delivered' || job.status === 'mailed') timestamps.delivered = null;
+    DB.updateJob(id, { status: prevStatus, timestamps });
+    UI.toast('Status reverted', 'success');
+    showDetail(id);
+  }
+
+  // ── Edit Timestamps ───────────────────────────────────────
+  function _updateTimestamp(id, field, dateVal, timeVal) {
+    if (!dateVal) {
+      // Clear the timestamp
+      const job = DB.getJob(id);
+      const timestamps = { ...job.timestamps, [field]: null };
+      DB.updateJob(id, { timestamps });
+      UI.toast('Date cleared', 'success');
+      return;
+    }
+    const ts = new Date(`${dateVal}T${timeVal || '00:00'}`).getTime();
+    if (isNaN(ts)) return;
+    const job = DB.getJob(id);
+    const timestamps = { ...job.timestamps, [field]: ts };
+    DB.updateJob(id, { timestamps });
+    UI.toast('Date updated', 'success');
   }
 
   // ── Convert to Invoice ────────────────────────────────────
@@ -324,8 +411,8 @@ const Jobs = (() => {
   }
 
   return {
-    show, showDetail, openNew, openEdit, save, setStatus, convertToInvoice,
+    show, showDetail, openNew, openEdit, save, setStatus, revertStatus, unlock, convertToInvoice,
     delete: del,
-    _search, _filter, _addItem, _removeItem, _itemChange, _onCustomerChange
+    _search, _filter, _addItem, _removeItem, _itemChange, _onCustomerChange, _updateTimestamp
   };
 })();
