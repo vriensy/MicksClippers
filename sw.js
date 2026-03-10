@@ -1,12 +1,13 @@
 /* =============================================================
    SHARP JOBS — Service Worker
-   Version: 1.1.0
-   Description: Offline-first. App loads entirely from cache.
-                Network is only used for GitHub update/backup calls,
-                which are made explicitly by the user — never automatically.
+   Version: 1.2.0
+   Description: Cache-first for instant offline loads.
+                Updates are handled explicitly via the in-app
+                update system — never automatically.
+                GitHub API calls always bypass the cache.
    ============================================================= */
 
-const CACHE_NAME = 'sharp-jobs-v1.1.0';
+const CACHE_NAME = 'sharp-jobs-v1.2.0';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './js/db.js', './js/ui.js', './js/jobs.js',
@@ -15,7 +16,7 @@ const ASSETS = [
   './js/settings.js', './js/updater.js'
 ];
 
-// Install: cache all app files immediately, don't wait
+// Install: pre-cache all app files immediately
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(c => c.addAll(ASSETS))
@@ -23,7 +24,7 @@ self.addEventListener('install', e => {
   self.skipWaiting();
 });
 
-// Activate: delete any old caches from previous versions
+// Activate: delete any old version caches
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -33,14 +34,17 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Fetch: strictly offline-first
-// - GitHub API/raw calls: pass straight through to network (user-triggered only)
-// - Google Fonts: network with cache fallback
-// - Everything else (app files): cache only, never touch network
+// Allow the app to trigger immediate SW activation after an update
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // GitHub — always network, user explicitly triggered this
+  // GitHub API — always network, never cached
   if (url.hostname === 'api.github.com' || url.hostname === 'raw.githubusercontent.com') {
     e.respondWith(
       fetch(e.request).catch(() => new Response('{"error":"offline"}', {
@@ -50,7 +54,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Google Fonts — network with cache fallback (for first load with internet)
+  // Google Fonts — cache first, network fallback on first load
   if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
     e.respondWith(
       caches.match(e.request).then(cached => {
@@ -64,17 +68,14 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // All app files — cache only, no network attempt
-  // If not in cache (first ever load), fall back to network once to populate cache
+  // All app files — cache first, instant offline load
+  // Updates only happen when user explicitly taps Check for Updates
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
-      // Not cached yet — fetch once and store (only happens on very first load)
+      // Not in cache yet (first ever load) — fetch and store
       return fetch(e.request).then(res => {
-        if (res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
-        }
+        if (res.ok) caches.open(CACHE_NAME).then(c => c.put(e.request, res.clone()));
         return res;
       });
     })
