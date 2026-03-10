@@ -339,21 +339,9 @@ const Settings = (() => {
       `;
       window._pendingUpdates = updates;
     } catch (e) {
-      const gh = DB.getGhConfig();
-      const diagUrl = `https://api.github.com/repos/${gh.username}/${gh.repo}/contents/manifest.json?ref=${gh.branch||'main'}`;
       document.getElementById('update-content').innerHTML = `
-        <div class="update-error">❌ ${e.message}</div>
-        <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-top:12px;font-size:11px;color:var(--text-dim);word-break:break-all;line-height:1.6">
-          <strong style="color:var(--text)">Debug info:</strong><br>
-          Username: ${gh.username || '⚠️ not set'}<br>
-          Repo: ${gh.repo || '⚠️ not set'}<br>
-          Branch: ${gh.branch || 'main'}<br>
-          Token: ${gh.token ? '✅ set (' + gh.token.length + ' chars)' : '⚠️ not set'}<br>
-          URL: ${diagUrl}<br><br>
-          <strong style="color:var(--text)">Error:</strong> ${e.stack || e.message}
-        </div>
-        <button class="btn btn-ghost" style="margin-top:12px" onclick="Settings._testGhFetch()">🔍 Test Connection</button>
-        <button class="btn btn-ghost" onclick="UI.closeModal('updateModal')">Close</button>
+        <div class="update-error">❌ Update failed: ${e.message}</div>
+        <button class="btn btn-ghost" style="margin-top:12px" onclick="UI.closeModal('updateModal')">Close</button>
       `;
     }
   }
@@ -367,7 +355,6 @@ const Settings = (() => {
 
     try {
       if (gh.token) await Updater.backupToGitHub('app');
-      Updater.downloadDataBackup();
 
       document.getElementById('update-content').innerHTML = '<div class="update-checking"><span class="spinner"></span> Applying updates...</div>';
 
@@ -377,9 +364,14 @@ const Settings = (() => {
 
       document.getElementById('update-content').innerHTML = `
         <div class="update-all-good">✅ ${updates.length} file${updates.length!==1?'s':''} updated successfully!</div>
-        <p style="color:var(--text-dim);font-size:13px;text-align:center;margin:8px 0">Reload the app to apply changes</p>
-        <button class="btn btn-primary" onclick="window.location.reload(true)">🔄 Reload Now</button>
+        <p style="color:var(--text-dim);font-size:13px;text-align:center;margin:8px 0">Reloading to apply changes...</p>
       `;
+
+      // Tell the service worker to activate immediately then reload
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+      }
+      setTimeout(() => window.location.reload(true), 1500);
     } catch (e) {
       document.getElementById('update-content').innerHTML = `<div class="update-error">❌ Update failed: ${e.message}</div><button class="btn btn-ghost" onclick="UI.closeModal('updateModal')">Close</button>`;
     }
