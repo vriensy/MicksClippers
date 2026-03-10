@@ -15,7 +15,12 @@ const Updater = (() => {
     'js/settings.js', 'js/updater.js'
   ];
 
-  const CACHE_NAME = 'sharp-jobs-v1.1.0';
+  // ── Get active cache name dynamically ────────────────────
+  async function getActiveCacheName() {
+    const keys = await caches.keys();
+    const appCache = keys.find(k => k.startsWith('sharp-jobs-v'));
+    return appCache || 'sharp-jobs-v1.2.0';
+  }
 
   // ── Authenticated GitHub API fetch ────────────────────────
   async function ghFetch(path, options = {}) {
@@ -71,6 +76,7 @@ const Updater = (() => {
   // ── Pull & apply updates ──────────────────────────────────
   async function applyUpdates(filesToUpdate, onProgress) {
     const installed = DB.getInstalledVersions();
+    const CACHE_NAME = await getActiveCacheName();
     const cache = await caches.open(CACHE_NAME);
     for (let i = 0; i < filesToUpdate.length; i++) {
       const { file, remoteVer } = filesToUpdate[i];
@@ -123,6 +129,7 @@ const Updater = (() => {
     }
 
     if (type === 'app' || type === 'both') {
+      const CACHE_NAME = await getActiveCacheName();
       const cache = await caches.open(CACHE_NAME);
       for (const file of FILES) {
         try {
@@ -144,6 +151,7 @@ const Updater = (() => {
       const text = await fetchFileFromGitHub('backup/data-backup.json');
       DB.importAllData(JSON.parse(text));
     } else {
+      const CACHE_NAME = await getActiveCacheName();
       const cache = await caches.open(CACHE_NAME);
       for (const file of FILES) {
         try {
