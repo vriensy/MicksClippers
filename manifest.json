@@ -12,7 +12,7 @@
     "js/customers.js":{ "version": "1.0.0", "description": "Customers module" },
     "js/invoices.js": { "version": "1.1.0", "description": "Invoices module" },
     "js/dashboard.js":{ "version": "1.0.0", "description": "Dashboard module" },
-    "js/settings.js": { "version": "1.0.0", "description": "Settings module" },
+    "js/settings.js": { "version": "1.1.0", "description": "Settings module" },
     "js/updater.js":  { "version": "1.2.0", "description": "GitHub update & backup system" }
   }
 }
