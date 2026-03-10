@@ -339,7 +339,22 @@ const Settings = (() => {
       `;
       window._pendingUpdates = updates;
     } catch (e) {
-      document.getElementById('update-content').innerHTML = `<div class="update-error">❌ ${e.message}</div><button class="btn btn-ghost" onclick="UI.closeModal('updateModal')">Close</button>`;
+      const gh = DB.getGhConfig();
+      const diagUrl = `https://api.github.com/repos/${gh.username}/${gh.repo}/contents/manifest.json?ref=${gh.branch||'main'}`;
+      document.getElementById('update-content').innerHTML = `
+        <div class="update-error">❌ ${e.message}</div>
+        <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-top:12px;font-size:11px;color:var(--text-dim);word-break:break-all;line-height:1.6">
+          <strong style="color:var(--text)">Debug info:</strong><br>
+          Username: ${gh.username || '⚠️ not set'}<br>
+          Repo: ${gh.repo || '⚠️ not set'}<br>
+          Branch: ${gh.branch || 'main'}<br>
+          Token: ${gh.token ? '✅ set (' + gh.token.length + ' chars)' : '⚠️ not set'}<br>
+          URL: ${diagUrl}<br><br>
+          <strong style="color:var(--text)">Error:</strong> ${e.stack || e.message}
+        </div>
+        <button class="btn btn-ghost" style="margin-top:12px" onclick="Settings._testGhFetch()">🔍 Test Connection</button>
+        <button class="btn btn-ghost" onclick="UI.closeModal('updateModal')">Close</button>
+      `;
     }
   }
 
@@ -419,13 +434,45 @@ const Settings = (() => {
     });
   }
 
+  async function _testGhFetch() {
+    const gh = DB.getGhConfig();
+    const url = `https://api.github.com/repos/${gh.username}/${gh.repo}/contents/manifest.json?ref=${gh.branch||'main'}&t=${Date.now()}`;
+    document.getElementById('update-content').innerHTML = `<div class="update-checking"><span class="spinner"></span> Testing connection...</div>`;
+    try {
+      const res = await fetch(url, {
+        mode: 'cors',
+        credentials: 'omit',
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'Authorization': `token ${gh.token}`
+        }
+      });
+      const text = await res.text();
+      document.getElementById('update-content').innerHTML = `
+        <div style="background:var(--surface2);border-radius:8px;padding:12px;font-size:11px;color:var(--text-dim);word-break:break-all;line-height:1.6">
+          <strong style="color:var(--text)">Status: ${res.status} ${res.statusText}</strong><br><br>
+          <strong style="color:var(--text)">Response:</strong><br>${text.slice(0,300)}...
+        </div>
+        <button class="btn btn-ghost" style="margin-top:12px" onclick="UI.closeModal('updateModal')">Close</button>
+      `;
+    } catch (e) {
+      document.getElementById('update-content').innerHTML = `
+        <div class="update-error">❌ Fetch threw an exception</div>
+        <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-top:8px;font-size:11px;color:var(--text-dim);word-break:break-all">
+          ${e.toString()}<br>${e.stack||''}
+        </div>
+        <button class="btn btn-ghost" style="margin-top:12px" onclick="UI.closeModal('updateModal')">Close</button>
+      `;
+    }
+  }
+
   return {
     show, toggleGst,
     openBusinessModal, saveBusinessProfile, handleLogoUpload, removeLogo,
     openPaymentModal, savePaymentDetails,
     openNewRegion, openEditRegion, saveRegion, deleteRegion,
     openGhModal, saveGhConfig,
-    checkUpdates, applyUpdates,
+    checkUpdates, applyUpdates, _testGhFetch,
     backupAll, backupDataOnly, restoreData, handleRestoreFile, restoreAppFromGitHub
   };
 })();
