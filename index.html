@@ -591,18 +591,9 @@ html, body { height:100%; background:var(--bg); color:var(--text); font-family:'
 <script>
 /* ── App Init ── */
 (function init() {
-  // Unregister any old service workers and clear stale caches
+  // Register service worker
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(regs => {
-      regs.forEach(r => r.unregister());
-    });
-    caches.keys().then(keys => {
-      keys.forEach(k => caches.delete(k));
-    });
-    // Re-register fresh after a short delay
-    setTimeout(() => {
-      navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW:', e));
-    }, 2000);
+    navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW:', e));
   }
 
   // Dismiss modals on overlay tap
