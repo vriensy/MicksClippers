@@ -275,20 +275,27 @@ html, body { height:100%; background:var(--bg); color:var(--text); font-family:'
 .pdoc-invblock { text-align:right; flex-shrink:0; }
 .pdoc-title { font-size:22px; font-weight:700; color:#111; }
 .pdoc-meta { font-size:12px; color:#555; margin-top:3px; }
-.pdoc-to { margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid #eee; font-size:13px; line-height:1.7; }
+.pdoc-to { margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid #eee; font-size:13px; line-height:1.7; color:#222; }
 .pdoc-to-label { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:#999; margin-bottom:4px; }
 .pdoc-table { width:100%; border-collapse:collapse; margin:16px 0; font-size:13px; }
 .pdoc-table th { background:#f5f5f5; padding:8px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:#555; }
-.pdoc-table td { padding:8px; border-bottom:1px solid #eee; }
-.pdoc-table tfoot td { border-top:2px solid #222; border-bottom:none; font-weight:600; padding-top:10px; }
+.pdoc-table td { padding:8px; border-bottom:1px solid #eee; color:#222; }
+.pdoc-table tfoot td { border-top:2px solid #222; border-bottom:none; font-weight:600; padding-top:10px; color:#222; }
 .pdoc-total-row td { font-size:15px; }
-.pdoc-payment { background:#f9f9f9; border-radius:8px; padding:14px; margin-top:16px; font-size:13px; line-height:1.7; }
+.pdoc-payment { background:#f9f9f9; border-radius:8px; padding:14px; margin-top:16px; font-size:13px; line-height:1.7; color:#444; }
 .pdoc-payment-label { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:#999; margin-bottom:6px; }
 @media print {
   #nav, #fab, .print-close-bar { display:none !important; }
   .print-doc { margin:0; border-radius:0; box-shadow:none; }
   #screen { padding-bottom:0; overflow:visible; }
+  body { background:#fff !important; }
 }
+
+/* ── Segmented Control ── */
+.delivery-type-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-top:1px solid var(--border); margin-top:4px; }
+.seg-ctrl { display:flex; background:var(--surface2); border-radius:8px; padding:3px; gap:3px; }
+.seg-btn { background:none; border:none; border-radius:6px; padding:6px 14px; font-size:13px; font-family:'DM Sans',sans-serif; color:var(--text-dim); cursor:pointer; transition:all .15s; }
+.seg-btn.seg-active { background:var(--surface3); color:var(--text); font-weight:600; }
 
 /* ── Lock Banner ── */
 .lock-banner { display:flex; align-items:center; gap:10px; margin:12px 14px 0; background:var(--green-bg); border:1px solid var(--green); border-radius:var(--radius-sm); padding:10px 14px; font-size:13px; font-weight:600; color:var(--green); }
@@ -346,6 +353,18 @@ html, body { height:100%; background:var(--bg); color:var(--text); font-family:'
   <!-- FAB -->
   <div id="fab" onclick="UI.currentTab==='customers'?Customers.openNew():UI.currentTab==='invoices'?Invoices.openAdHoc():Jobs.openNew()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </div>
+</div>
+
+<!-- Regions Modal -->
+<div class="modal-overlay" id="regionsModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Regions</div>
+    <input class="search-input" style="margin-bottom:12px" placeholder="🔍 Search regions..." oninput="Settings._regionsSearch(this.value)" autocomplete="off">
+    <div id="regions-list"></div>
+    <button class="btn btn-primary" style="margin-top:12px" onclick="UI.closeModal('regionsModal');Settings.openNewRegion(false)">+ Add New Region</button>
+    <button class="btn btn-ghost" onclick="UI.closeModal('regionsModal')" style="margin-top:8px">Close</button>
   </div>
 </div>
 
