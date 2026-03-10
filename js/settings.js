@@ -93,6 +93,15 @@ const Settings = (() => {
             <div class="settings-desc">Compare installed vs GitHub versions</div>
           </div>
         </div>
+        <div class="settings-row" onclick="Settings.forceRecache()">
+          <div class="settings-icon icon-amber">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+          </div>
+          <div class="settings-text">
+            <div class="settings-title">Force Recache</div>
+            <div class="settings-desc">Clear cache and reload all files fresh</div>
+          </div>
+        </div>
       </div>
 
       ${UI.sectionLabel('Backup & Restore')}
@@ -480,6 +489,25 @@ const Settings = (() => {
     }
   }
 
+  async function forceRecache() {
+    UI.confirm('Clear all cached files and reload fresh from the server?', async () => {
+      try {
+        // Unregister service worker
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.unregister()));
+        }
+        // Delete all caches
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+        UI.toast('Cache cleared — reloading...', 'success');
+        setTimeout(() => window.location.reload(true), 800);
+      } catch (e) {
+        UI.toast('Recache failed: ' + e.message, 'error');
+      }
+    });
+  }
+
   return {
     show, toggleGst,
     openBusinessModal, saveBusinessProfile, handleLogoUpload, removeLogo,
@@ -487,7 +515,7 @@ const Settings = (() => {
     openRegionsModal, _regionsSearch,
     openNewRegion, openEditRegion, saveRegion, deleteRegion,
     openGhModal, saveGhConfig,
-    checkUpdates, applyUpdates,
+    checkUpdates, applyUpdates, forceRecache,
     backupAll, backupDataOnly, restoreData, handleRestoreFile, restoreAppFromGitHub
   };
 })();
