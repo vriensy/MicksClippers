@@ -60,24 +60,15 @@ const Settings = (() => {
 
       ${UI.sectionLabel('Regions')}
       <div class="settings-card">
-        ${regions.length === 0
-          ? `<div class="settings-row"><div class="settings-text"><div class="settings-desc">No regions yet</div></div></div>`
-          : regions.map(r => `
-            <div class="settings-row" onclick="Settings.openEditRegion('${r.id}')">
-              <div class="settings-icon icon-blue">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              </div>
-              <div class="settings-text">
-                <div class="settings-title">${r.name}</div>
-                <div class="settings-desc">${r.turnaroundDays} day turnaround</div>
-              </div>
-              <div class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
-            </div>`).join('')}
-        <div class="settings-row" onclick="Settings.openNewRegion(false)">
-          <div class="settings-icon icon-green">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <div class="settings-row" onclick="Settings.openRegionsModal()">
+          <div class="settings-icon icon-blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
           </div>
-          <div class="settings-text"><div class="settings-title">Add Region</div></div>
+          <div class="settings-text">
+            <div class="settings-title">Manage Regions</div>
+            <div class="settings-desc">${regions.length} region${regions.length!==1?'s':''} configured</div>
+          </div>
+          <div class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
         </div>
       </div>
 
@@ -225,7 +216,38 @@ const Settings = (() => {
     render();
   }
 
-  // ── Region Modals ─────────────────────────────────────────
+  // ── Regions Modal ─────────────────────────────────────────
+  let regionsSearchQ = '';
+
+  function openRegionsModal() {
+    regionsSearchQ = '';
+    _renderRegionsList();
+    UI.openModal('regionsModal');
+  }
+
+  function _renderRegionsList() {
+    const regions = DB.getRegions();
+    const q = regionsSearchQ.toLowerCase();
+    const filtered = q ? regions.filter(r => r.name.toLowerCase().includes(q)) : regions;
+    const container = document.getElementById('regions-list');
+    if (!container) return;
+    container.innerHTML = filtered.length === 0
+      ? `<div style="text-align:center;color:var(--text-dim);padding:20px;font-size:13px">${q ? 'No regions match' : 'No regions yet'}</div>`
+      : filtered.map(r => `
+          <div class="settings-row" onclick="Settings.openEditRegion('${r.id}');UI.closeModal('regionsModal')">
+            <div class="settings-text">
+              <div class="settings-title">${r.name}</div>
+              <div class="settings-desc">${r.turnaroundDays} day turnaround</div>
+            </div>
+            <div class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>`).join('');
+  }
+
+  function _regionsSearch(q) {
+    regionsSearchQ = q;
+    _renderRegionsList();
+  }
+
   let editingRegionId = null;
 
   function openNewRegion(returnToCustomer = false) {
@@ -262,7 +284,7 @@ const Settings = (() => {
     }
     UI.closeModal('regionModal');
     if (returnToCustomerModal) { returnToCustomerModal = false; UI.openModal('customerModal'); Customers._refreshRegionSelect(); }
-    else render();
+    else { render(); }
   }
 
   function deleteRegion(id) {
@@ -462,9 +484,10 @@ const Settings = (() => {
     show, toggleGst,
     openBusinessModal, saveBusinessProfile, handleLogoUpload, removeLogo,
     openPaymentModal, savePaymentDetails,
+    openRegionsModal, _regionsSearch,
     openNewRegion, openEditRegion, saveRegion, deleteRegion,
     openGhModal, saveGhConfig,
-    checkUpdates, applyUpdates, _testGhFetch,
+    checkUpdates, applyUpdates,
     backupAll, backupDataOnly, restoreData, handleRestoreFile, restoreAppFromGitHub
   };
 })();

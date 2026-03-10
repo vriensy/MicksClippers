@@ -139,10 +139,12 @@ const Invoices = (() => {
   let payingInvoiceId = null;
   function openPayment(id) {
     payingInvoiceId = id;
-    document.getElementById('pay-amount').value = '';
+    const inv = DB.getInvoice(id);
+    const remaining = inv ? (inv.total - inv.amountPaid) : 0;
+    document.getElementById('pay-amount').value = remaining > 0 ? remaining.toFixed(2) : '';
     document.getElementById('pay-method').value = 'cash';
     document.getElementById('pay-note').value = '';
-    UI.openModal('paymentModal');
+    UI.openModal('invoicePaymentModal');
   }
 
   function savePayment() {
@@ -154,7 +156,7 @@ const Invoices = (() => {
       note: document.getElementById('pay-note').value.trim()
     });
     UI.toast('Payment recorded', 'success');
-    UI.closeModal('paymentModal');
+    UI.closeModal('invoicePaymentModal');
     showDetail(payingInvoiceId);
   }
 
@@ -165,6 +167,9 @@ const Invoices = (() => {
   }
 
   function del(id) {
+    const inv = DB.getInvoice(id);
+    // Clear the invoiceId on the linked job so it can be re-invoiced
+    if (inv && inv.woId) DB.updateJob(inv.woId, { invoiceId: null });
     DB.deleteInvoice(id);
     UI.toast('Invoice deleted');
     show();

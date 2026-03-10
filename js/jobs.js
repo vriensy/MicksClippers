@@ -169,11 +169,19 @@ const Jobs = (() => {
         <h3>Timeline</h3>
         <div class="timeline">
           ${timelineRow('Created',          job.timestamps.created,   null,        true)}
-          ${timelineRow('Started',          job.timestamps.started,   'started',   locked)}
-          ${timelineRow('Completed',        job.timestamps.completed, 'completed', locked)}
-          ${timelineRow('Delivered/Mailed', job.timestamps.delivered, 'delivered', locked)}
+          ${timelineRow('Date Started',     job.timestamps.started,   'started',   locked)}
+          ${timelineRow('Date Completed',   job.timestamps.completed, 'completed', locked)}
+          ${timelineRow('Date Delivered',   job.timestamps.delivered, 'delivered', locked)}
         </div>
-        ${!locked ? `<div class="timeline-hint">Tap a date to edit it</div>` : ''}
+        ${!locked && job.timestamps.delivered ? `
+          <div class="delivery-type-row">
+            <span class="detail-label">Delivery type</span>
+            <div class="seg-ctrl">
+              <button class="seg-btn${job.status==='delivered'?' seg-active':''}" onclick="Jobs.setDeliveryType('${job.id}','delivered')">🚗 Drop-off</button>
+              <button class="seg-btn${job.status==='mailed'?' seg-active':''}" onclick="Jobs.setDeliveryType('${job.id}','mailed')">✉️ Mailed</button>
+            </div>
+          </div>` : ''}
+        ${!locked ? `<div class="timeline-hint">Tap a date to set or clear it</div>` : ''}
       </div>
 
       <div class="detail-actions">
@@ -215,22 +223,9 @@ const Jobs = (() => {
   let _currentDetailId = null;
 
   function statusActions(job) {
-    const s = job.status;
-    const actions = [];
-    if (s === 'not_started') actions.push(`<button class="btn btn-status-amber" onclick="Jobs.setStatus('${job.id}','in_progress')">▶ Start Job</button>`);
-    if (s === 'in_progress') actions.push(`<button class="btn btn-status-blue" onclick="Jobs.setStatus('${job.id}','completed')">✓ Mark Completed</button>`);
-    if (s === 'completed') {
-      actions.push(`<button class="btn btn-status-green" onclick="Jobs.setStatus('${job.id}','delivered')">🚗 Mark Delivered</button>`);
-      actions.push(`<button class="btn btn-status-green" onclick="Jobs.setStatus('${job.id}','mailed')">✉️ Mark Mailed</button>`);
-    }
-    // Revert button — available for any status beyond not_started
-    const prevMap = { in_progress: 'not_started', completed: 'in_progress', delivered: 'completed', mailed: 'completed' };
-    const prevLabels = { not_started: 'Not Started', in_progress: 'In Progress', completed: 'Completed' };
-    if (prevMap[s]) {
-      const prev = prevMap[s];
-      actions.push(`<button class="btn btn-ghost" onclick="Jobs.revertStatus('${job.id}','${prev}')">↩ Revert to ${prevLabels[prev]}</button>`);
-    }
-    return actions.join('');
+    // Status is now driven entirely by dates — no manual status buttons
+    // Dates are shown as editable fields in the timeline section
+    return '';
   }
 
   // ── Status Change ─────────────────────────────────────────
@@ -256,20 +251,37 @@ const Jobs = (() => {
 
   // ── Edit Timestamps ───────────────────────────────────────
   function _updateTimestamp(id, field, dateVal, timeVal) {
-    if (!dateVal) {
-      // Clear the timestamp
-      const job = DB.getJob(id);
-      const timestamps = { ...job.timestamps, [field]: null };
-      DB.updateJob(id, { timestamps });
-      UI.toast('Date cleared', 'success');
-      return;
-    }
-    const ts = new Date(`${dateVal}T${timeVal || '00:00'}`).getTime();
-    if (isNaN(ts)) return;
     const job = DB.getJob(id);
-    const timestamps = { ...job.timestamps, [field]: ts };
-    DB.updateJob(id, { timestamps });
-    UI.toast('Date updated', 'success');
+    const timestamps = { ...job.timestamps };
+
+    if (!dateVal) {
+      timestamps[field] = null;
+    } else {
+      const ts = new Date(`${dateVal}T${timeVal || '00:00'}`).getTime();
+      if (isNaN(ts)) return;
+      timestamps[field] = ts;
+    }
+
+    // Derive status from dates
+    let status = 'not_started';
+    if (timestamps.started)   status = 'in_progress';
+    if (timestamps.completed) status = 'completed';
+    if (timestamps.delivered) {
+      // Preserve delivered vs mailed — if previously mailed keep mailed
+      status = (job.status === 'mailed') ? 'mailed' : 'delivered';
+    }
+
+    DB.updateJob(id, { timestamps, status });
+    UI.toast(dateVal ? 'Date updated' : 'Date cleared', 'success');
+    showDetail(id);
+  }
+
+  // ── Delivered vs Mailed toggle ────────────────────────────
+  function setDeliveryType(id, type) {
+    const job = DB.getJob(id);
+    if (!job || !job.timestamps.delivered) return;
+    DB.updateJob(id, { status: type });
+    showDetail(id);
   }
 
   // ── Convert to Invoice ────────────────────────────────────
@@ -382,6 +394,17 @@ const Jobs = (() => {
     _updateDueFromCustomer();
   }
 
+  function _refreshCustomerSelect(newCustomerId) {
+    const customers = DB.getCustomers();
+    const sel = document.getElementById('jm-customer');
+    if (!sel) return;
+    sel.innerHTML =
+      `<option value="">Select customer...</option>` +
+      customers.map(c => `<option value="${c.id}"${c.id === newCustomerId ? ' selected' : ''}>${c.name}</option>`).join('') +
+      `<option value="__new__">+ Add new customer</option>`;
+    _updateDueFromCustomer();
+  }
+
   function save() {
     const customerId = document.getElementById('jm-customer').value;
     if (!customerId || customerId === '__new__') { UI.toast('Please select a customer', 'error'); return; }
@@ -411,8 +434,8 @@ const Jobs = (() => {
   }
 
   return {
-    show, showDetail, openNew, openEdit, save, setStatus, revertStatus, unlock, convertToInvoice,
+    show, showDetail, openNew, openEdit, save, setStatus, revertStatus, unlock, convertToInvoice, setDeliveryType,
     delete: del,
-    _search, _filter, _addItem, _removeItem, _itemChange, _onCustomerChange, _updateTimestamp
+    _search, _filter, _addItem, _removeItem, _itemChange, _onCustomerChange, _refreshCustomerSelect, _updateTimestamp
   };
 })();
