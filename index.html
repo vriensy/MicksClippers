@@ -591,9 +591,18 @@ html, body { height:100%; background:var(--bg); color:var(--text); font-family:'
 <script>
 /* ── App Init ── */
 (function init() {
-  // Register service worker
+  // Unregister any old service workers and clear stale caches
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW:', e));
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => r.unregister());
+    });
+    caches.keys().then(keys => {
+      keys.forEach(k => caches.delete(k));
+    });
+    // Re-register fresh after a short delay
+    setTimeout(() => {
+      navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW:', e));
+    }, 2000);
   }
 
   // Dismiss modals on overlay tap
@@ -603,11 +612,11 @@ html, body { height:100%; background:var(--bg); color:var(--text); font-family:'
   const installed = DB.getInstalledVersions();
   if (!Object.keys(installed).length) {
     const defaults = {
-      'index.html':'1.0.0','sw.js':'1.0.0','manifest.json':'1.0.0',
-      'js/db.js':'1.0.0','js/ui.js':'1.0.0','js/jobs.js':'1.0.0',
+      'index.html':'1.2.0','sw.js':'1.1.0','manifest.json':'1.2.0',
+      'js/db.js':'1.1.0','js/ui.js':'1.0.0','js/jobs.js':'1.2.0',
       'js/delivery.js':'1.0.0','js/customers.js':'1.0.0',
-      'js/invoices.js':'1.0.0','js/dashboard.js':'1.0.0',
-      'js/settings.js':'1.0.0','js/updater.js':'1.0.0'
+      'js/invoices.js':'1.1.0','js/dashboard.js':'1.0.0',
+      'js/settings.js':'1.1.0','js/updater.js':'1.2.0'
     };
     DB.saveInstalledVersions(defaults);
   }
