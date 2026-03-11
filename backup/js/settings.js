@@ -60,24 +60,29 @@ const Settings = (() => {
 
       ${UI.sectionLabel('Regions')}
       <div class="settings-card">
-        ${regions.length === 0
-          ? `<div class="settings-row"><div class="settings-text"><div class="settings-desc">No regions yet</div></div></div>`
-          : regions.map(r => `
-            <div class="settings-row" onclick="Settings.openEditRegion('${r.id}')">
-              <div class="settings-icon icon-blue">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              </div>
-              <div class="settings-text">
-                <div class="settings-title">${r.name}</div>
-                <div class="settings-desc">${r.turnaroundDays} day turnaround</div>
-              </div>
-              <div class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
-            </div>`).join('')}
-        <div class="settings-row" onclick="Settings.openNewRegion(false)">
-          <div class="settings-icon icon-green">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <div class="settings-row" onclick="Settings.openRegionsModal()">
+          <div class="settings-icon icon-blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
           </div>
-          <div class="settings-text"><div class="settings-title">Add Region</div></div>
+          <div class="settings-text">
+            <div class="settings-title">Manage Regions</div>
+            <div class="settings-desc">${regions.length} region${regions.length!==1?'s':''} configured</div>
+          </div>
+          <div class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+      </div>
+
+      ${UI.sectionLabel('Item Library')}
+      <div class="settings-card">
+        <div class="settings-row" onclick="ItemLibrary.openModal()">
+          <div class="settings-icon icon-green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <div class="settings-text">
+            <div class="settings-title">Saved Items</div>
+            <div class="settings-desc">${DB.getItemLibrary().length} item${DB.getItemLibrary().length!==1?'s':''} · quick-pick when adding jobs or invoices</div>
+          </div>
+          <div class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
         </div>
       </div>
 
@@ -100,6 +105,15 @@ const Settings = (() => {
           <div class="settings-text">
             <div class="settings-title">Check for Updates</div>
             <div class="settings-desc">Compare installed vs GitHub versions</div>
+          </div>
+        </div>
+        <div class="settings-row" onclick="Settings.forceRecache()">
+          <div class="settings-icon icon-amber">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+          </div>
+          <div class="settings-text">
+            <div class="settings-title">Force Recache</div>
+            <div class="settings-desc">Clear cache and reload all files fresh</div>
           </div>
         </div>
       </div>
@@ -225,7 +239,38 @@ const Settings = (() => {
     render();
   }
 
-  // ── Region Modals ─────────────────────────────────────────
+  // ── Regions Modal ─────────────────────────────────────────
+  let regionsSearchQ = '';
+
+  function openRegionsModal() {
+    regionsSearchQ = '';
+    _renderRegionsList();
+    UI.openModal('regionsModal');
+  }
+
+  function _renderRegionsList() {
+    const regions = DB.getRegions();
+    const q = regionsSearchQ.toLowerCase();
+    const filtered = q ? regions.filter(r => r.name.toLowerCase().includes(q)) : regions;
+    const container = document.getElementById('regions-list');
+    if (!container) return;
+    container.innerHTML = filtered.length === 0
+      ? `<div style="text-align:center;color:var(--text-dim);padding:20px;font-size:13px">${q ? 'No regions match' : 'No regions yet'}</div>`
+      : filtered.map(r => `
+          <div class="settings-row" onclick="Settings.openEditRegion('${r.id}');UI.closeModal('regionsModal')">
+            <div class="settings-text">
+              <div class="settings-title">${r.name}</div>
+              <div class="settings-desc">${r.turnaroundDays} day turnaround</div>
+            </div>
+            <div class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>`).join('');
+  }
+
+  function _regionsSearch(q) {
+    regionsSearchQ = q;
+    _renderRegionsList();
+  }
+
   let editingRegionId = null;
 
   function openNewRegion(returnToCustomer = false) {
@@ -262,7 +307,7 @@ const Settings = (() => {
     }
     UI.closeModal('regionModal');
     if (returnToCustomerModal) { returnToCustomerModal = false; UI.openModal('customerModal'); Customers._refreshRegionSelect(); }
-    else render();
+    else { render(); }
   }
 
   function deleteRegion(id) {
@@ -339,7 +384,10 @@ const Settings = (() => {
       `;
       window._pendingUpdates = updates;
     } catch (e) {
-      document.getElementById('update-content').innerHTML = `<div class="update-error">❌ ${e.message}</div><button class="btn btn-ghost" onclick="UI.closeModal('updateModal')">Close</button>`;
+      document.getElementById('update-content').innerHTML = `
+        <div class="update-error">❌ Update failed: ${e.message}</div>
+        <button class="btn btn-ghost" style="margin-top:12px" onclick="UI.closeModal('updateModal')">Close</button>
+      `;
     }
   }
 
@@ -352,7 +400,6 @@ const Settings = (() => {
 
     try {
       if (gh.token) await Updater.backupToGitHub('app');
-      Updater.downloadDataBackup();
 
       document.getElementById('update-content').innerHTML = '<div class="update-checking"><span class="spinner"></span> Applying updates...</div>';
 
@@ -362,9 +409,14 @@ const Settings = (() => {
 
       document.getElementById('update-content').innerHTML = `
         <div class="update-all-good">✅ ${updates.length} file${updates.length!==1?'s':''} updated successfully!</div>
-        <p style="color:var(--text-dim);font-size:13px;text-align:center;margin:8px 0">Reload the app to apply changes</p>
-        <button class="btn btn-primary" onclick="window.location.reload(true)">🔄 Reload Now</button>
+        <p style="color:var(--text-dim);font-size:13px;text-align:center;margin:8px 0">Reloading to apply changes...</p>
       `;
+
+      // Tell the service worker to activate immediately then reload
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+      }
+      setTimeout(() => window.location.reload(true), 1500);
     } catch (e) {
       document.getElementById('update-content').innerHTML = `<div class="update-error">❌ Update failed: ${e.message}</div><button class="btn btn-ghost" onclick="UI.closeModal('updateModal')">Close</button>`;
     }
@@ -419,13 +471,65 @@ const Settings = (() => {
     });
   }
 
+  async function _testGhFetch() {
+    const gh = DB.getGhConfig();
+    const url = `https://api.github.com/repos/${gh.username}/${gh.repo}/contents/manifest.json?ref=${gh.branch||'main'}&t=${Date.now()}`;
+    document.getElementById('update-content').innerHTML = `<div class="update-checking"><span class="spinner"></span> Testing connection...</div>`;
+    try {
+      const res = await fetch(url, {
+        mode: 'cors',
+        credentials: 'omit',
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'Authorization': `token ${gh.token}`
+        }
+      });
+      const text = await res.text();
+      document.getElementById('update-content').innerHTML = `
+        <div style="background:var(--surface2);border-radius:8px;padding:12px;font-size:11px;color:var(--text-dim);word-break:break-all;line-height:1.6">
+          <strong style="color:var(--text)">Status: ${res.status} ${res.statusText}</strong><br><br>
+          <strong style="color:var(--text)">Response:</strong><br>${text.slice(0,300)}...
+        </div>
+        <button class="btn btn-ghost" style="margin-top:12px" onclick="UI.closeModal('updateModal')">Close</button>
+      `;
+    } catch (e) {
+      document.getElementById('update-content').innerHTML = `
+        <div class="update-error">❌ Fetch threw an exception</div>
+        <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-top:8px;font-size:11px;color:var(--text-dim);word-break:break-all">
+          ${e.toString()}<br>${e.stack||''}
+        </div>
+        <button class="btn btn-ghost" style="margin-top:12px" onclick="UI.closeModal('updateModal')">Close</button>
+      `;
+    }
+  }
+
+  async function forceRecache() {
+    UI.confirm('Clear all cached files and reload fresh from the server?', async () => {
+      try {
+        // Unregister service worker
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.unregister()));
+        }
+        // Delete all caches
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+        UI.toast('Cache cleared — reloading...', 'success');
+        setTimeout(() => window.location.reload(true), 800);
+      } catch (e) {
+        UI.toast('Recache failed: ' + e.message, 'error');
+      }
+    });
+  }
+
   return {
     show, toggleGst,
     openBusinessModal, saveBusinessProfile, handleLogoUpload, removeLogo,
     openPaymentModal, savePaymentDetails,
+    openRegionsModal, _regionsSearch,
     openNewRegion, openEditRegion, saveRegion, deleteRegion,
     openGhModal, saveGhConfig,
-    checkUpdates, applyUpdates,
+    checkUpdates, applyUpdates, forceRecache,
     backupAll, backupDataOnly, restoreData, handleRestoreFile, restoreAppFromGitHub
   };
 })();
