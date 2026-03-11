@@ -506,7 +506,7 @@ const Settings = (() => {
   async function forceRecache() {
     UI.confirm('Clear all cached files and reload fresh from the server?', async () => {
       try {
-        // Unregister service worker
+        // Unregister all service workers and wait for completion
         if ('serviceWorker' in navigator) {
           const regs = await navigator.serviceWorker.getRegistrations();
           await Promise.all(regs.map(r => r.unregister()));
@@ -514,8 +514,15 @@ const Settings = (() => {
         // Delete all caches
         const keys = await caches.keys();
         await Promise.all(keys.map(k => caches.delete(k)));
+
         UI.toast('Cache cleared — reloading...', 'success');
-        setTimeout(() => window.location.reload(true), 800);
+
+        // Wait long enough for unregistration to fully settle, then hard reload
+        setTimeout(() => {
+          // location.reload(true) is deprecated on some iOS versions;
+          // replace href forces a full network fetch with no cache
+          window.location.href = window.location.href.split('?')[0] + '?nocache=' + Date.now();
+        }, 1500);
       } catch (e) {
         UI.toast('Recache failed: ' + e.message, 'error');
       }
