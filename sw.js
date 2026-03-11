@@ -7,12 +7,12 @@
                 GitHub API calls always bypass the cache.
    ============================================================= */
 
-const CACHE_NAME = 'sharp-jobs-v1.2.0';
+const CACHE_NAME = 'sharp-jobs-v1.4.0';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './js/db.js', './js/ui.js', './js/jobs.js',
   './js/delivery.js', './js/customers.js',
-  './js/invoices.js', './js/dashboard.js',
+  './js/invoices.js', './js/itemlibrary.js', './js/dashboard.js',
   './js/settings.js', './js/updater.js'
 ];
 

@@ -297,6 +297,12 @@ html, body { height:100%; background:var(--bg); color:var(--text); font-family:'
 .seg-btn { background:none; border:none; border-radius:6px; padding:6px 14px; font-size:13px; font-family:'DM Sans',sans-serif; color:var(--text-dim); cursor:pointer; transition:all .15s; }
 .seg-btn.seg-active { background:var(--surface3); color:var(--text); font-weight:600; }
 
+/* ── Item Library select ── */
+.item-lib-select { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text-dim); font-size:12px; font-family:'DM Sans',sans-serif; outline:none; margin-bottom:6px; -webkit-appearance:none; }
+
+/* ── Timeline clear button ── */
+.timeline-clear-btn { background:none; border:none; color:var(--text-dim); font-size:16px; cursor:pointer; padding:4px 8px; line-height:1; }
+
 /* ── Lock Banner ── */
 .lock-banner { display:flex; align-items:center; gap:10px; margin:12px 14px 0; background:var(--green-bg); border:1px solid var(--green); border-radius:var(--radius-sm); padding:10px 14px; font-size:13px; font-weight:600; color:var(--green); }
 .lock-banner-unlocked { background:var(--amber-bg); border-color:var(--amber); color:var(--amber); }
@@ -353,6 +359,64 @@ html, body { height:100%; background:var(--bg); color:var(--text); font-family:'
   <!-- FAB -->
   <div id="fab" onclick="UI.currentTab==='customers'?Customers.openNew():UI.currentTab==='invoices'?Invoices.openAdHoc():Jobs.openNew()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </div>
+</div>
+
+<!-- Item Library Modal (list) -->
+<div class="modal-overlay" id="itemLibraryModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Saved Items</div>
+    <div id="ilm-list"></div>
+    <button class="btn btn-primary" style="margin-top:12px" onclick="ItemLibrary.openNew()">+ Add New Item</button>
+    <button class="btn btn-ghost" onclick="UI.closeModal('itemLibraryModal')" style="margin-top:8px">Close</button>
+  </div>
+</div>
+
+<!-- Item Library Item Modal (add/edit) -->
+<div class="modal-overlay" id="itemLibraryItemModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="ili-modal-title">New Item</div>
+    <div class="field"><label>Item Name</label><input type="text" id="ili-name" placeholder="e.g. Scissor Sharpen" autocomplete="off"></div>
+    <div class="field"><label>Description (optional)</label><input type="text" id="ili-desc" placeholder="e.g. Standard scissor sharpening service" autocomplete="off"></div>
+    <div class="field"><label>Default Price ($)</label><input type="number" id="ili-price" placeholder="0.00" step="0.50" min="0"></div>
+    <button class="btn btn-primary" onclick="ItemLibrary.save()">Save Item</button>
+    <button id="ili-delete" class="btn btn-danger-ghost" onclick="ItemLibrary.del()" style="display:none;margin-top:8px">Delete Item</button>
+    <button class="btn btn-ghost" onclick="UI.closeModal('itemLibraryItemModal')" style="margin-top:8px">Cancel</button>
+  </div>
+</div>
+
+<!-- Invoice Edit Modal -->
+<div class="modal-overlay" id="invEditModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="iem-title">Edit Invoice</div>
+    <div class="field">
+      <label>Customer</label>
+      <select id="iem-customer">
+        <option value="">No customer</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Payment Due Date</label>
+      <input type="date" id="iem-due">
+    </div>
+    <div class="field" style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <input type="checkbox" id="iem-gst" style="width:18px;height:18px;accent-color:var(--gold)">
+      <label for="iem-gst" style="font-size:14px;color:var(--text);text-transform:none;letter-spacing:0">Include GST (10%)</label>
+    </div>
+    <div style="margin-bottom:14px">
+      <div class="items-label">Items</div>
+      <div id="iem-items"></div>
+      <button class="add-item-btn" onclick="Invoices._editAddItem()">+ Add Item</button>
+      <div class="item-total-row">
+        <span class="item-total-label">Total</span>
+        <span class="item-total-val" id="iem-total">$0.00</span>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="Invoices.saveEdit()">Save Invoice</button>
+    <button class="btn btn-ghost" onclick="UI.closeModal('invEditModal')" style="margin-top:8px">Cancel</button>
   </div>
 </div>
 
@@ -604,6 +668,7 @@ html, body { height:100%; background:var(--bg); color:var(--text); font-family:'
 <script src="js/delivery.js"></script>
 <script src="js/customers.js"></script>
 <script src="js/invoices.js"></script>
+<script src="js/itemlibrary.js"></script>
 <script src="js/dashboard.js"></script>
 <script src="js/settings.js"></script>
 
