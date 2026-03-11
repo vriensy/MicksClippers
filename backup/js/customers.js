@@ -73,6 +73,7 @@ const Customers = (() => {
 
       <div class="detail-actions">
         <button class="btn btn-primary" onclick="Customers.openEdit('${id}')">✏️ Edit Customer</button>
+        <button class="btn btn-danger-ghost" onclick="UI.confirm('Delete ${customer.name}? Their job history will remain.', () => Customers._del('${id}'))">Delete Customer</button>
       </div>
 
       ${jobs.length ? UI.sectionLabel('Work Orders') : ''}
@@ -159,5 +160,5 @@ const Customers = (() => {
     show();
   }
 
-  return { show, showDetail, openNew, openEdit, save, delete: del, onRegionChange };
+  return { show, showDetail, openNew, openEdit, save, delete: del, _del: del, onRegionChange };
 })();
