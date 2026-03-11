@@ -128,21 +128,121 @@ const Invoices = (() => {
 
       <div class="detail-actions">
         ${inv.status !== 'paid' ? `<button class="btn btn-primary" onclick="Invoices.openPayment('${id}')">💰 Record Payment</button>` : ''}
+        <button class="btn btn-ghost" onclick="Invoices.openEdit('${id}')">✏️ Edit Invoice</button>
         ${inv.status === 'draft' ? `<button class="btn btn-status-blue" onclick="Invoices.markSent('${id}')">📤 Mark as Sent</button>` : ''}
         <button class="btn btn-ghost" onclick="Invoices.printView('${id}')">🖨️ Print / PDF</button>
-        <button class="btn btn-danger-ghost" onclick="UI.confirm('Delete ${inv.invNumber}?', () => Invoices.delete('${id}'))">Delete Invoice</button>
+        <button class="btn btn-danger-ghost" onclick="UI.confirm('Delete ${inv.invNumber}?', () => Invoices._del('${id}'))">Delete Invoice</button>
       </div>
     `);
+  }
+
+  // ── Edit Invoice ──────────────────────────────────────────
+  let editingInvId = null;
+  let editItemRows = [];
+
+  function openEdit(id) {
+    const inv = DB.getInvoice(id);
+    if (!inv) return;
+    editingInvId = id;
+    editItemRows = inv.items.map(i => ({...i, id: i.id || DB.uid()}));
+    const customers = DB.getCustomers();
+    const settings = DB.getSettings();
+
+    document.getElementById('iem-title').textContent = `Edit ${inv.invNumber}`;
+    document.getElementById('iem-customer').innerHTML =
+      `<option value="">No customer</option>` +
+      customers.map(c => `<option value="${c.id}"${inv.customerId===c.id?' selected':''}>${c.name}</option>`).join('');
+    document.getElementById('iem-due').value = inv.paymentDueDate
+      ? new Date(inv.paymentDueDate).toISOString().split('T')[0] : '';
+    document.getElementById('iem-gst').checked = inv.gstEnabled;
+    _renderEditItems();
+    UI.openModal('invEditModal');
+  }
+
+  function _renderEditItems() {
+    const container = document.getElementById('iem-items');
+    const library = DB.getItemLibrary();
+    container.innerHTML = editItemRows.map(item => `
+      <div class="item-row">
+        ${library.length ? `<select class="item-lib-select" onchange="Invoices._pickEditLibItem('${item.id}',this.value)"><option value="">— Pick from library —</option>${library.map(li=>`<option value="${li.id}">${li.name}${li.unitPrice?' ($'+parseFloat(li.unitPrice).toFixed(2)+')':''}</option>`).join('')}</select>` : ''}
+        <input class="item-desc" type="text" placeholder="Description" value="${item.description}"
+          oninput="Invoices._editItemChange('${item.id}','description',this.value)" autocomplete="off">
+        <div class="item-nums">
+          <input class="item-qty" type="number" placeholder="Qty" value="${item.qty}" min="1"
+            oninput="Invoices._editItemChange('${item.id}','qty',this.value)">
+          <input class="item-price" type="number" placeholder="Unit $" value="${item.unitPrice}" step="0.5" min="0"
+            oninput="Invoices._editItemChange('${item.id}','price',this.value)">
+          <button class="item-del" onclick="Invoices._editRemoveItem('${item.id}')" ${editItemRows.length===1?'disabled':''}>✕</button>
+        </div>
+      </div>`).join('');
+    _updateEditTotal();
+  }
+
+  function _updateEditTotal() {
+    const total = editItemRows.reduce((s,i)=>s+(parseFloat(i.unitPrice)||0)*(parseInt(i.qty)||1),0);
+    const el = document.getElementById('iem-total');
+    if (el) el.textContent = UI.fmtMoney(total);
+  }
+
+  function _editItemChange(id, field, val) {
+    const item = editItemRows.find(i => i.id === id);
+    if (!item) return;
+    if (field === 'description') item.description = val;
+    if (field === 'qty') item.qty = val;
+    if (field === 'price') item.unitPrice = val;
+    _updateEditTotal();
+  }
+
+  function _editAddItem() {
+    editItemRows.push({ id: DB.uid(), description: '', qty: 1, unitPrice: '' });
+    _renderEditItems();
+  }
+
+  function _editRemoveItem(id) {
+    if (editItemRows.length === 1) return;
+    editItemRows = editItemRows.filter(i => i.id !== id);
+    _renderEditItems();
+  }
+
+  function _pickEditLibItem(rowId, libItemId) {
+    if (!libItemId) return;
+    const li = DB.getLibraryItem(libItemId);
+    if (!li) return;
+    const item = editItemRows.find(i => i.id === rowId);
+    if (!item) return;
+    item.description = li.name + (li.description ? ' — ' + li.description : '');
+    item.unitPrice = li.unitPrice;
+    _renderEditItems();
+  }
+
+  function saveEdit() {
+    const items = editItemRows.filter(i => String(i.description).trim());
+    if (!items.length) { UI.toast('Add at least one item', 'error'); return; }
+    const gstEnabled = document.getElementById('iem-gst').checked;
+    const subtotal = items.reduce((s,i)=>(s+(parseFloat(i.unitPrice)||0)*(parseInt(i.qty)||1)),0);
+    const gstAmount = gstEnabled ? subtotal * 0.1 : 0;
+    const total = subtotal + gstAmount;
+    const dueVal = document.getElementById('iem-due').value;
+    const customerId = document.getElementById('iem-customer').value || null;
+    DB.updateInvoice(editingInvId, {
+      customerId, items, gstEnabled, subtotal, gstAmount, total,
+      paymentDueDate: dueVal ? new Date(dueVal).getTime() : null
+    });
+    UI.toast('Invoice updated', 'success');
+    UI.closeModal('invEditModal');
+    showDetail(editingInvId);
   }
 
   // ── Payment Modal ─────────────────────────────────────────
   let payingInvoiceId = null;
   function openPayment(id) {
     payingInvoiceId = id;
-    document.getElementById('pay-amount').value = '';
+    const inv = DB.getInvoice(id);
+    const remaining = inv ? (inv.total - inv.amountPaid) : 0;
+    document.getElementById('pay-amount').value = remaining > 0 ? remaining.toFixed(2) : '';
     document.getElementById('pay-method').value = 'cash';
     document.getElementById('pay-note').value = '';
-    UI.openModal('paymentModal');
+    UI.openModal('invoicePaymentModal');
   }
 
   function savePayment() {
@@ -154,7 +254,7 @@ const Invoices = (() => {
       note: document.getElementById('pay-note').value.trim()
     });
     UI.toast('Payment recorded', 'success');
-    UI.closeModal('paymentModal');
+    UI.closeModal('invoicePaymentModal');
     showDetail(payingInvoiceId);
   }
 
@@ -164,7 +264,9 @@ const Invoices = (() => {
     showDetail(id);
   }
 
-  function del(id) {
+  function _del(id) {
+    const inv = DB.getInvoice(id);
+    if (inv && inv.woId) DB.updateJob(inv.woId, { invoiceId: null });
     DB.deleteInvoice(id);
     UI.toast('Invoice deleted');
     show();
@@ -246,8 +348,10 @@ const Invoices = (() => {
 
   function _renderAdhocItems() {
     const container = document.getElementById('ai-items');
+    const library = DB.getItemLibrary();
     container.innerHTML = adhocItemRows.map(item => `
       <div class="item-row">
+        ${library.length ? `<select class="item-lib-select" onchange="Invoices._adhocPickLibItem('${item.id}',this.value)"><option value="">— Pick from library —</option>${library.map(li=>`<option value="${li.id}">${li.name}${li.unitPrice?' ($'+parseFloat(li.unitPrice).toFixed(2)+')':''}</option>`).join('')}</select>` : ''}
         <input class="item-desc" type="text" placeholder="Description" value="${item.description}"
           oninput="Invoices._adhocItemChange('${item.id}','description',this.value)" autocomplete="off">
         <div class="item-nums">
@@ -259,6 +363,17 @@ const Invoices = (() => {
         </div>
       </div>`).join('');
     _updateAdhocTotal();
+  }
+
+  function _adhocPickLibItem(rowId, libItemId) {
+    if (!libItemId) return;
+    const li = DB.getLibraryItem(libItemId);
+    if (!li) return;
+    const item = adhocItemRows.find(i => i.id === rowId);
+    if (!item) return;
+    item.description = li.name + (li.description ? ' — ' + li.description : '');
+    item.unitPrice = li.unitPrice;
+    _renderAdhocItems();
   }
 
   function _updateAdhocTotal() {
@@ -305,8 +420,10 @@ const Invoices = (() => {
   function _filter(s) { filterStatus = s; render(); }
 
   return {
-    show, showDetail, openPayment, savePayment, markSent, printView, _closePrint,
-    openAdHoc, saveAdHoc, _adhocAddItem, _adhocRemoveItem, _adhocItemChange,
-    delete: del, _filter
+    show, showDetail,
+    openEdit, saveEdit, _editAddItem, _editRemoveItem, _editItemChange, _pickEditLibItem,
+    openPayment, savePayment, markSent, printView, _closePrint,
+    openAdHoc, saveAdHoc, _adhocAddItem, _adhocRemoveItem, _adhocItemChange, _adhocPickLibItem,
+    delete: _del, _del, _filter
   };
 })();
