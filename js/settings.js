@@ -72,6 +72,20 @@ const Settings = (() => {
         </div>
       </div>
 
+      ${UI.sectionLabel('Item Library')}
+      <div class="settings-card">
+        <div class="settings-row" onclick="ItemLibrary.openModal()">
+          <div class="settings-icon icon-green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <div class="settings-text">
+            <div class="settings-title">Saved Items</div>
+            <div class="settings-desc">${DB.getItemLibrary().length} item${DB.getItemLibrary().length!==1?'s':''} · quick-pick when adding jobs or invoices</div>
+          </div>
+          <div class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+      </div>
+
       ${UI.sectionLabel('GitHub & Updates')}
       <div class="settings-card">
         <div class="settings-row" onclick="Settings.openGhModal()">

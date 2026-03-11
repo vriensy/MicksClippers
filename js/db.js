@@ -16,7 +16,8 @@ const DB = (() => {
     settings:   'sj_settings',
     counters:   'sj_counters',
     ghConfig:   'sj_gh_config',
-    installedVersions: 'sj_installed_versions'
+    installedVersions: 'sj_installed_versions',
+    itemLibrary: 'sj_item_library'
   };
 
   // ── Helpers ───────────────────────────────────────────────
@@ -318,6 +319,22 @@ const DB = (() => {
     };
   }
 
+  // ── Item Library ──────────────────────────────────────────
+  function getItemLibrary() { return load(KEYS.itemLibrary) || []; }
+  function saveItemLibrary(items) { save(KEYS.itemLibrary, items); }
+  function addLibraryItem({ name, description, unitPrice }) {
+    const items = getItemLibrary();
+    const item = { id: uid(), name, description: description||'', unitPrice: parseFloat(unitPrice)||0, createdAt: Date.now() };
+    items.push(item);
+    saveItemLibrary(items);
+    return item;
+  }
+  function updateLibraryItem(id, data) {
+    saveItemLibrary(getItemLibrary().map(i => i.id === id ? { ...i, ...data } : i));
+  }
+  function deleteLibraryItem(id) { saveItemLibrary(getItemLibrary().filter(i => i.id !== id)); }
+  function getLibraryItem(id) { return getItemLibrary().find(i => i.id === id) || null; }
+
   // ── Public API ────────────────────────────────────────────
   return {
     // Settings
@@ -332,6 +349,8 @@ const DB = (() => {
     getJobs, addJob, updateJob, updateJobStatus, deleteJob, getJob, getDeliveryQueue,
     // Invoices
     getInvoices, createInvoiceFromJob, createAdHocInvoice, updateInvoice, addPayment, deleteInvoice, getInvoice, checkOverdueInvoices,
+    // Item Library
+    getItemLibrary, addLibraryItem, updateLibraryItem, deleteLibraryItem, getLibraryItem,
     // Data
     exportAllData, importAllData,
     calcDueDate, getStats, uid

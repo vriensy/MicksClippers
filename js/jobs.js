@@ -188,10 +188,15 @@ const Jobs = (() => {
         ${locked ? '' : statusActions(job)}
         ${locked ? '' : `<button class="btn btn-ghost" onclick="Jobs.openEdit('${job.id}')">✏️ Edit Job</button>`}
         ${!locked && (job.status === 'completed' || job.status === 'delivered' || job.status === 'mailed')
-          ? job.invoiceId
+          ? (() => {
+              const linkedInv = job.invoiceId ? DB.getInvoice(job.invoiceId) : null;
+              return linkedInv
+                ? `<button class="btn btn-ghost" onclick="Invoices.showDetail('${linkedInv.id}')">🧾 View Invoice</button>`
+                : `<button class="btn btn-primary" onclick="Jobs.convertToInvoice('${job.id}')">🧾 Convert to Invoice</button>`;
+            })()
+          : job.invoiceId && DB.getInvoice(job.invoiceId)
             ? `<button class="btn btn-ghost" onclick="Invoices.showDetail('${job.invoiceId}')">🧾 View Invoice</button>`
-            : `<button class="btn btn-primary" onclick="Jobs.convertToInvoice('${job.id}')">🧾 Convert to Invoice</button>`
-          : job.invoiceId ? `<button class="btn btn-ghost" onclick="Invoices.showDetail('${job.invoiceId}')">🧾 View Invoice</button>` : ''}
+            : ''}
         ${locked ? '' : `<button class="btn btn-danger-ghost" onclick="UI.confirm('Delete ${job.woNumber}? This cannot be undone.', () => Jobs.delete('${job.id}'))">Delete Job</button>`}
       </div>
     `);
@@ -199,22 +204,26 @@ const Jobs = (() => {
 
   function timelineRow(label, ts, field, readOnly) {
     const dateVal = ts ? new Date(ts).toISOString().split('T')[0] : '';
-    const timeVal = ts ? new Date(ts).toTimeString().slice(0,5) : '';
-    if (readOnly || !field) {
-      return `<div class="timeline-row">
+    const jobId = _currentDetailId;
+
+    if (readOnly) {
+      // Created — show read-only display but with edit inputs since we allow editing it
+      return `<div class="timeline-row timeline-row-edit">
         <span class="timeline-label">${label}</span>
-        <span class="timeline-val${ts?'':' timeline-empty'}">${ts ? UI.fmtDateTime(ts) : '—'}</span>
+        <div class="timeline-inputs">
+          <input type="date" class="timeline-date-input" value="${dateVal}"
+            onchange="Jobs._updateTimestamp('${jobId}','created',this.value)">
+        </div>
       </div>`;
     }
-    // Editable row — date + time pickers
-    const jobId = _currentDetailId;
+
+    // Editable row — date only
     return `<div class="timeline-row timeline-row-edit">
       <span class="timeline-label">${label}</span>
       <div class="timeline-inputs">
-        <input type="date" id="ti-date-${field}" class="timeline-date-input" value="${dateVal}"
-          onchange="Jobs._updateTimestamp('${jobId}','${field}',this.value,document.getElementById('ti-time-${field}').value)">
-        <input type="time" id="ti-time-${field}" class="timeline-time-input" value="${timeVal}"
-          onchange="Jobs._updateTimestamp('${jobId}','${field}',document.getElementById('ti-date-${field}').value,this.value)">
+        <input type="date" class="timeline-date-input" value="${dateVal}"
+          onchange="Jobs._updateTimestamp('${jobId}','${field}',this.value)">
+        ${dateVal ? `<button class="timeline-clear-btn" onclick="Jobs._clearTimestamp('${jobId}','${field}')">✕</button>` : ''}
       </div>
     </div>`;
   }
@@ -250,30 +259,36 @@ const Jobs = (() => {
   }
 
   // ── Edit Timestamps ───────────────────────────────────────
-  function _updateTimestamp(id, field, dateVal, timeVal) {
+  function _updateTimestamp(id, field, dateVal) {
     const job = DB.getJob(id);
     const timestamps = { ...job.timestamps };
 
     if (!dateVal) {
       timestamps[field] = null;
     } else {
-      const ts = new Date(`${dateVal}T${timeVal || '00:00'}`).getTime();
+      // Use noon to avoid timezone date-shift issues
+      const ts = new Date(`${dateVal}T12:00:00`).getTime();
       if (isNaN(ts)) return;
       timestamps[field] = ts;
     }
 
-    // Derive status from dates
-    let status = 'not_started';
-    if (timestamps.started)   status = 'in_progress';
-    if (timestamps.completed) status = 'completed';
-    if (timestamps.delivered) {
-      // Preserve delivered vs mailed — if previously mailed keep mailed
-      status = (job.status === 'mailed') ? 'mailed' : 'delivered';
+    // Derive status from dates (not for 'created' field)
+    if (field !== 'created') {
+      let status = 'not_started';
+      if (timestamps.started)   status = 'in_progress';
+      if (timestamps.completed) status = 'completed';
+      if (timestamps.delivered) status = (job.status === 'mailed') ? 'mailed' : 'delivered';
+      DB.updateJob(id, { timestamps, status });
+    } else {
+      DB.updateJob(id, { timestamps });
     }
 
-    DB.updateJob(id, { timestamps, status });
     UI.toast(dateVal ? 'Date updated' : 'Date cleared', 'success');
     showDetail(id);
+  }
+
+  function _clearTimestamp(id, field) {
+    _updateTimestamp(id, field, null);
   }
 
   // ── Delivered vs Mailed toggle ────────────────────────────
@@ -336,8 +351,14 @@ const Jobs = (() => {
 
   function _renderItemRows() {
     const container = document.getElementById('jm-items');
-    container.innerHTML = itemRows.map((item, idx) => `
+    const library = DB.getItemLibrary();
+    const libOptions = library.length
+      ? `<option value="">— Pick from library —</option>` + library.map(li => `<option value="${li.id}">${li.name}${li.unitPrice ? ' ($'+parseFloat(li.unitPrice).toFixed(2)+')' : ''}</option>`).join('')
+      : null;
+
+    container.innerHTML = itemRows.map((item) => `
       <div class="item-row" id="ir-${item.id}">
+        ${libOptions ? `<select class="item-lib-select" onchange="Jobs._pickLibraryItem('${item.id}',this.value)"><option value="">— Pick from library —</option>${library.map(li=>`<option value="${li.id}">${li.name}${li.unitPrice?' ($'+parseFloat(li.unitPrice).toFixed(2)+')':''}</option>`).join('')}</select>` : ''}
         <input class="item-desc" type="text" placeholder="Description" value="${item.description}"
           oninput="Jobs._itemChange('${item.id}','description',this.value)" autocomplete="off">
         <div class="item-nums">
@@ -349,6 +370,17 @@ const Jobs = (() => {
         </div>
       </div>`).join('');
     _updateItemTotal();
+  }
+
+  function _pickLibraryItem(rowId, libItemId) {
+    if (!libItemId) return;
+    const li = DB.getLibraryItem(libItemId);
+    if (!li) return;
+    const item = itemRows.find(i => i.id === rowId);
+    if (!item) return;
+    item.description = li.name + (li.description ? ' — ' + li.description : '');
+    item.unitPrice = li.unitPrice;
+    _renderItemRows();
   }
 
   function _updateItemTotal() {
@@ -436,6 +468,6 @@ const Jobs = (() => {
   return {
     show, showDetail, openNew, openEdit, save, setStatus, revertStatus, unlock, convertToInvoice, setDeliveryType,
     delete: del,
-    _search, _filter, _addItem, _removeItem, _itemChange, _onCustomerChange, _refreshCustomerSelect, _updateTimestamp
+    _search, _filter, _addItem, _removeItem, _itemChange, _pickLibraryItem, _onCustomerChange, _refreshCustomerSelect, _updateTimestamp, _clearTimestamp
   };
 })();
